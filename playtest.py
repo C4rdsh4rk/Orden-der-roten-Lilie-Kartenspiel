@@ -28,6 +28,8 @@ class Player:
             chosen_card = random.choice(available_cards)
             if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
                 self.deck.append(chosen_card)
+            if sum(card.strength for card in self.deck)==38:
+                break
             else:
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
