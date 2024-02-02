@@ -1,6 +1,7 @@
 import random
 import os
 from colorama import Fore
+
 class Card:
     def __init__(self, name, strength, row_restriction=None):
         self.name = name
@@ -17,6 +18,7 @@ class Player:
             "GELEHRTE": [],
             "UNTERSTUETZUNG": [],
         }
+
     def build_deck(self):
         loop_flag = True
         while loop_flag:
@@ -31,7 +33,7 @@ class Player:
             if self.idiot=="human":
                 while True:
                     print(f"Choose cards for your deck")
-                    print(f"Available Cards:")
+                    print(f"Available Cards:"+Fore.WHITE)
                     for card in available_cards:
                         print(f"+----------+ ", end="")     
                     print()  # Move to the next line for the next row
@@ -70,6 +72,7 @@ class Player:
             if sum(card.strength for card in self.deck)==38:
                 break
             else:
+                print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
 
