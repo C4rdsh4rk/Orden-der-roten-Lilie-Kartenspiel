@@ -29,36 +29,39 @@ class Player:
                 Card(Fore.WHITE +"KLERIKER"+Fore.WHITE, random.randint(1, 5), "GELEHRTE"),
                 Card(Fore.GREEN +"HEILER  "+Fore.WHITE, random.randint(1, 5), "UNTERSTUETZUNG"),
                 Card(Fore.YELLOW +"HELD    "+Fore.WHITE, random.randint(2, 5)),  # Can be played in any row
+                Card(Fore.MAGENTA +"EFFEKT  "+Fore.WHITE, random.randint(2, 5)),  # Can be played in any row
             ]
+            available_cards_weights = [0.25,0.25,0.25,0.15,0.15]
+            Booster=random.choices(available_cards,available_cards_weights,k=5)
             if self.idiot=="human":
                 while True:
                     print(f"Choose cards for your deck")
                     print(f"Available Cards:"+Fore.WHITE)
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"+----------+ ", end="")     
                     print()  # Move to the next line for the next row
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"|          | ", end="")
                     print()  # Move to the next line for the next row
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"| {card.name} | ", end="")
                     print()  # Move to the next line for the next row
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"| Str: {card.strength}   | ", end="")
                     print()  # Move to the next line for the next row
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"|          | ", end="")
                     print()  # Move to the next line for the next row
-                    for card in available_cards:
+                    for card in Booster:
                         print(f"+----------+ ", end="")
                     print()  # Move to the next line for the next row
 
                     print(f"\n{self.name}'s Deck:")
                     display_rows(self.rows.items())
 
-                    choice = input("Enter a number 1-4 to choose a card\n").lower()
+                    choice = input(f"Enter a number 1-{len(Booster)} to choose a card\n").lower()
                     choice = int(choice)
-                    if choice>4 or choice<1:
+                    if len(Booster)<choice or choice<1:
                         os.system('cls')
                         print(Fore.RED + "Invalid choice you muppet!")
                     else:
