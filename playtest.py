@@ -119,20 +119,23 @@ def resolve_effect(player,card):
     else:
         print("unknown effect, bro")
 
-def play_card(player, card):
-    if card.type!=Row.EFFECTS or card.type!=Row.ANY:
-        player.rows[card.type].append(card)
-        print(f"{player.name}: Played {card.name} with strength {card.strength} in {card.type}.")
-    elif card.type==None:
-        row = get_user_input("Which row?\n(1: FRONT)\n(2: WISE)\n(3: SUPPORT)", [1, 2, 3])
-        row-=1
-        player.rows[row].append(card)
-    else:
-        player.rows[card.type].append(card)
-        print(f"{player.name}: Played effect {card.name}.")
-        resolve_effect(player,card)
+def play_card(player: Player, card: Card, row: Row) -> None:
+    player.rows[row].append(card)
+    print(f"{player.name}: Played {card.name} with strength {card.strength} in {card.type}.")
 
-    return True # TODO implement rule checks and return false if rule violated
+def rule_check_card(player, card):
+    available_choices={
+        1: Row.FRONT,
+        2: Row.WISE,
+        3: Row.SUPPORT
+    }
+    row = card.type
+    if card.type == Row.ANY:
+        row = available_choices[get_user_input(
+            "Choose any row to play the card",
+            list(available_choices.keys())
+        )]
+    play_card(player, card, row)
 
 def row_sort_order(row_card_tuple: tuple):
     row, _ = row_card_tuple
@@ -152,12 +155,12 @@ def display_rows(deck: list[tuple], display_effects=False, backwards=False):
         if row == Row.EFFECTS and not display_effects:
             continue
         print(colors[row],f"{row.value}:")
-        print(f"{'+----------+ '*len(row)}")
-        print(f"{'|          | '*len(row)}")
-        print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in row]))
-        print(" ".join([f"| Str: {card.strength}   |" for card in row]))
-        print(f"{'|          | '*len(row)}")
-        print(f"{'+----------+ '*len(row)}")
+        print(f"{'+----------+ '*len(cards)}")
+        print(f"{'|          | '*len(cards)}")
+        print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in cards]))
+        print(" ".join([f"| Str: {card.strength}   |" for card in cards]))
+        print(f"{'|          | '*len(cards)}")
+        print(f"{'+----------+ '*len(cards)}")
         print(Fore.WHITE)
 
 def display_board(players):
