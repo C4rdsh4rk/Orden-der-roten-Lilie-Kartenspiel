@@ -2,87 +2,114 @@ import random
 import os
 from colorama import Fore
 
-class Card:
+import random
+import os
+from colorama import Fore
+
+class Card:  
     def __init__(self, name, strength, row_restriction=None):
         self.name = name
         self.type = row_restriction
         self.strength = strength
+    
+    def __str__(self):
+        return f"{self.name} (Str: {self.strength}, Row: {self.type})"
+
+class Booster:
+    available_strength = [1,2,3,4,5]
+    available_cards_weights = [0.3, 0.3, 0.3, 0.05, 0.05]# Probabilities
+    strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05]# Probabilities
+    available_effects = [1,2,3,4,5]# Add effects here TODO match number to effect string with rule check
+    available_cards = [
+        Card(Fore.RED + "RITTER  "+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "FRONT"),
+        Card(Fore.WHITE +"KLERIKER"+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "GELEHRTE"),
+        Card(Fore.GREEN +"HEILER  "+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "UNTERSTUETZUNG"),
+        Card(Fore.YELLOW +"HELD    "+Fore.WHITE, random.choices(available_strength,strength_weights)[0]),  # Can be played in any row
+        Card(Fore.MAGENTA +"EFFEKT  "+Fore.WHITE, random.choice(available_effects), "EFFEKTE"),  # Can be played in any row
+    ]
+
 
 class Player:
     def __init__(self, name, idiot):
         self.name = name
         self.idiot = idiot
         self.deck = []
+        self.hand = []  # Add a hand attribute
         self.rows = {
             "FRONT": [],
             "GELEHRTE": [],
             "UNTERSTUETZUNG": [],
+            "EFFEKTE": [],
         }
 
     def build_deck(self):
         loop_flag = True
         while loop_flag:
             os.system('cls')
-            print(f"{self.name} is building his deck")
-            available_cards = [
-                Card(Fore.RED + "RITTER  "+Fore.WHITE, random.randint(1, 5), "FRONT"),
-                Card(Fore.WHITE +"KLERIKER"+Fore.WHITE, random.randint(1, 5), "GELEHRTE"),
-                Card(Fore.GREEN +"HEILER  "+Fore.WHITE, random.randint(1, 5), "UNTERSTUETZUNG"),
-                Card(Fore.YELLOW +"HELD    "+Fore.WHITE, random.randint(2, 5)),  # Can be played in any row
-                Card(Fore.MAGENTA +"EFFEKT  "+Fore.WHITE, random.randint(2, 5)),  # Can be played in any row
-            ]
-            available_cards_weights = [0.25,0.25,0.25,0.15,0.15]
-            Booster=random.choices(available_cards,available_cards_weights,k=5)
-            if self.idiot=="human":
+            print(f"{self.name} is building his deck") 
+            Booster_pack = random.choices(Booster.available_cards, Booster.available_cards_weights, k=5)
+            if self.idiot == "human":
                 while True:
                     print(f"Choose cards for your deck")
-                    print(f"Available Cards:"+Fore.WHITE)
-                    for card in Booster:
-                        print(f"+----------+ ", end="")     
-                    print()  # Move to the next line for the next row
-                    for card in Booster:
-                        print(f"|          | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster:
-                        print(f"| {card.name} | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster:
-                        print(f"| Str: {card.strength}   | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster:
-                        print(f"|          | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster:
+                    print(f"Available Cards:" + Fore.WHITE)
+                    for card in Booster_pack:
                         print(f"+----------+ ", end="")
                     print()  # Move to the next line for the next row
-
+                    for card in Booster_pack:
+                        print(f"|          | ", end="")
+                    print()  # Move to the next line for the next row
+                    for card in Booster_pack:
+                        print(f"| {card.name} | ", end="")
+                    print()  # Move to the next line for the next row
+                    for card in Booster_pack:
+                        print(f"| Str: {card.strength}   | ", end="")
+                    print()  # Move to the next line for the next row
+                    for card in Booster_pack:
+                        print(f"|          | ", end="")
+                    print()  # Move to the next line for the next row
+                    for card in Booster_pack:
+                        print(f"+----------+ ", end="")
+                    print()  # Move to the next line for the next row
                     print(f"\n{self.name}'s Deck:")
                     display_rows(self.rows.items())
 
-                    choice = input(f"Enter a number 1-{len(Booster)} to choose a card\n").lower()
+                    choice = input(f"Enter a number 1-{len(Booster_pack)} to choose a card\n").lower()
                     choice = int(choice)
-                    if len(Booster)<choice or choice<1:
+                    if len(Booster_pack) < choice or choice < 1:
                         os.system('cls')
                         print(Fore.RED + "Invalid choice you muppet!")
                     else:
-                        chosen_card = available_cards[choice-1]  
+                        chosen_card = Booster_pack[choice - 1]
                         break
-            else: #cpu chooses a random card
-                chosen_card = random.choice(available_cards)
-            #deck building checks
+            else:  # cpu chooses a random card
+                chosen_card = random.choice(Booster_pack)
+            # deck building checks
             if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
                 self.deck.append(chosen_card)
-            if sum(card.strength for card in self.deck)==38:
+            if sum(card.strength for card in self.deck) == 38:
                 break
             else:
                 print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
 
+    def draw_hand(self):
+        random.shuffle(self.deck)
+        # Draw top 10 cards from deck
+        self.hand = self.deck[:10]# Change hand count here
+        # Remove drawn cards from the deck
+        self.deck = [card for card in self.deck if card not in self.hand]
+
     def display_deck(self):
         os.system('cls')
         print(f"{self.name}'s Deck:")
         for card in self.deck:
+            print(f"{card.name} ({card.strength})")
+
+    def display_hand(self):
+        os.system('cls')
+        print(f"{self.name}'s Hand:")
+        for card in self.hand:
             print(f"{card.name} ({card.strength})")
 
 def play_card(player, card, row):
