@@ -1,115 +1,14 @@
 import random
 import os
 from colorama import Fore
-from enum import Enum
+from player import Player
+from row import Row
+from utils import get_user_input
 
-class Row(Enum):
-    FRONT = "FRONT"
-    WISE = "WISE"
-    SUPPORT = "SUPPORT"
-    EFFECTS = "EFFECTS"
-    ANY = "ANY"
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear') # Clear screen for Linux and Windows
 
-class Card:  
-    def __init__(self, name, strength, row_restriction=None):
-        self.name = name
-        self.type = row_restriction
-        self.strength = strength
-    
-    def __str__(self):
-        return f"{self.name} (Str: {self.strength}, Row: {self.type})"
-
-class Booster:
-    def __init__(self):
-        self.available_strength = [1,2,3,4,5]
-        self.available_cards_weights = [0.3, 0.3, 0.3, 0.05, 0.05] # Probabilities
-        self.strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05] # Probabilities
-        self.available_effects = ["DRAW1","DRAW2"] # Add effects here TODO match number to effect string with rule check
-        self.available_cards = [
-                            Card(Fore.RED + "KNIGHT"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.FRONT),
-                            Card(Fore.WHITE +"CLERIC"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.WISE),
-                            Card(Fore.GREEN +"HEALER"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.SUPPORT),
-                            Card(Fore.YELLOW +"HERO"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.ANY), # Can be played in any row
-                            Card(Fore.MAGENTA +random.choice(self.available_effects)+Fore.WHITE, 1, Row.EFFECTS), # Can be played in any row
-                            ]
-        
-    def open(self,size):
-        return random.choices(self.available_cards, self.available_cards_weights, k=size)
-
-class Player:
-    def __init__(self, name, idiot):
-        self.name = name
-        self.idiot = idiot
-        self.deck = []
-        self.hand = [] # Add a hand attribute
-        self.passed = False
-        self.rows = {
-            Row.FRONT: [],
-            Row.WISE: [],
-            Row.SUPPORT: [],
-            Row.EFFECTS: [],
-        }
-
-    def build_deck(self, booster):
-        loop_flag = True
-        while loop_flag:
-            #clear_screen()
-            print(f"{self.name} is building his deck")
-            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            if self.idiot == "human":
-                print("Choose cards for your deck")
-                print("Available Cards:\n" + Fore.WHITE)
-                print(f"{'+----------+ '*len(booster_pack)}")
-                print(f"{'|          | '*len(booster_pack)}")
-                print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in booster_pack]))
-                print(" ".join([f"| Str: {card.strength}   |" for card in booster_pack]))
-                print(f"{'|          | '*len(booster_pack)}")
-                print(f"{'+----------+ '*len(booster_pack)}")
-
-                self.display_deck()
-
-                choice = get_user_input(
-                    f"Enter a number 1-{len(booster_pack)} to choose a card\n",
-                    [str(number) for number in range(1, len(booster_pack)+1)]
-                )
-                choice = int(choice)
-                chosen_card = booster_pack[choice - 1]
-            else:  # cpu chooses a random card
-                chosen_card = random.choice(booster_pack)
-            # deck building checks
-            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
-                self.deck.append(chosen_card)
-            elif sum(card.strength for card in self.deck) == 38:
-                break
-            else:
-                print("Value exceeds maximum deck strength, try again. (not your fault)")
-                # If adding the card exceeds the total strength constraint, try another card
-                continue
-
-    def draw_hand(self, num_cards=10,shuffle=False):
-        if shuffle:
-            random.shuffle(self.deck)
-        # Draw cards from the deck
-        self.hand = self.deck[:num_cards]
-        # Remove drawn cards from the deck
-        self.deck = [card for card in self.deck if card not in self.hand]
-
-    def display_deck(self):
-        #clear_screen()
-        print(f"{self.name}'s Deck:")
-        for card in self.deck:
-            print(f"{card.name} ({card.strength})")
-
-    def display_hand(self):
-        #clear_screen()
-        print(f"{self.name}'s Hand:")
-        card_number=1
-        for card in self.hand:
-            print(f"[{card_number}]{card.name} ({card.strength})", end="")
-            card_number+=1
 
 def resolve_effect(player,card):
     if card.name=="DRAW1":
@@ -123,7 +22,7 @@ def play_card(player: Player, card: Card, row: Row) -> None:
     player.rows[row].append(card)
     print(f"{player.name}: Played {card.name} with strength {card.strength} in {card.type}.")
 
-def rule_check_card(player, card):
+def rule_check_move(player, card):
     available_choices={
         1: Row.FRONT,
         2: Row.WISE,
@@ -131,6 +30,7 @@ def rule_check_card(player, card):
     }
     row = card.type
     if card.type == Row.ANY:
+
         row = available_choices[get_user_input(
             "Choose any row to play the card",
             list(available_choices.keys())
@@ -201,14 +101,7 @@ def initialize_players():
             player2 = Player("Clueless Robot", "pc")
             break
     return player1, player2
-    
-def get_user_input(prompt, valid_choices):
-    while True:
-        user_input = input(prompt)
-        if user_input in valid_choices:
-            return user_input
-        else:
-            print(f"Invalid input. Please enter one of {valid_choices}.")
+
 
 def game_loop(players):
     # Play three rounds
@@ -241,7 +134,7 @@ def game_loop(players):
                         player.passed = True
                         break
                     else:
-                        play_card_success = play_card(player, player.hand[int(action)])
+                        play_card_success = rule_check_move(player, player.hand[int(action)])
                     if play_card_success:
                         break
             player1_score, player2_score = check_winner(players)
