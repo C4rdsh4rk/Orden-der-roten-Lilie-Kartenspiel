@@ -2,9 +2,8 @@ import random
 import os
 from colorama import Fore
 
-import random
-import os
-from colorama import Fore
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear') # Clear screen for Linux and Windows
 
 class Card:  
     def __init__(self, name, strength, row_restriction=None):
@@ -16,73 +15,77 @@ class Card:
         return f"{self.name} (Str: {self.strength}, Row: {self.type})"
 
 class Booster:
-    available_strength = [1,2,3,4,5]
-    available_cards_weights = [0.3, 0.3, 0.3, 0.05, 0.05]# Probabilities
-    strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05]# Probabilities
-    available_effects = [1,2,3,4,5]# Add effects here TODO match number to effect string with rule check
-    available_cards = [
-        Card(Fore.RED + "RITTER  "+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "FRONT"),
-        Card(Fore.WHITE +"KLERIKER"+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "GELEHRTE"),
-        Card(Fore.GREEN +"HEILER  "+Fore.WHITE, random.choices(available_strength,strength_weights)[0], "UNTERSTUETZUNG"),
-        Card(Fore.YELLOW +"HELD    "+Fore.WHITE, random.choices(available_strength,strength_weights)[0]),  # Can be played in any row
-        Card(Fore.MAGENTA +"EFFEKT  "+Fore.WHITE, random.choice(available_effects), "EFFEKTE"),  # Can be played in any row
-    ]
-
+    def __init__(self):
+        self.available_strength = [1,2,3,4,5]
+        self.available_cards_weights = [0.3, 0.3, 0.3, 0.05, 0.05] # Probabilities
+        self.strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05] # Probabilities
+        self.available_effects = ["DRAW1   ","DRAW2   "] # Add effects here TODO match number to effect string with rule check
+        self.available_cards = [
+                            Card(Fore.RED + "RITTER  "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], "FRONT"),
+                            Card(Fore.WHITE +"KLERIKER"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], "GELEHRTE"),
+                            Card(Fore.GREEN +"HEILER  "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], "UNTERSTUETZUNG"),
+                            Card(Fore.YELLOW +"HELD    "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0]), # Can be played in any row
+                            Card(Fore.MAGENTA +random.choice(self.available_effects)+Fore.WHITE, 0, "EFFEKTE"), # Can be played in any row
+                            ]
+        
+    def open(self,size):
+        return random.choices(self.available_cards, self.available_cards_weights, k=size)
 
 class Player:
     def __init__(self, name, idiot):
         self.name = name
         self.idiot = idiot
         self.deck = []
-        self.hand = []  # Add a hand attribute
+        self.hand = [] # Add a hand attribute
+        self.passed = False
         self.rows = {
-            "FRONT": [],
-            "GELEHRTE": [],
-            "UNTERSTUETZUNG": [],
-            "EFFEKTE": [],
+            Fore.RED +"FRONT"+Fore.WHITE: [],
+            Fore.WHITE +"GELEHRTE"+Fore.WHITE: [],
+            Fore.GREEN +"UNTERSTUETZUNG"+Fore.WHITE: [],
+            Fore.MAGENTA +"EFFEKTE"+Fore.WHITE: [],
         }
 
-    def build_deck(self):
+    def build_deck(self, booster):
         loop_flag = True
         while loop_flag:
-            os.system('cls')
-            print(f"{self.name} is building his deck") 
-            Booster_pack = random.choices(Booster.available_cards, Booster.available_cards_weights, k=5)
+            clear_screen()
+            print(f"{self.name} is building his deck")
+            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
             if self.idiot == "human":
                 while True:
                     print(f"Choose cards for your deck")
-                    print(f"Available Cards:" + Fore.WHITE)
-                    for card in Booster_pack:
+                    print(f"Available Cards:\n" + Fore.WHITE)
+                    for card in booster_pack:
                         print(f"+----------+ ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster_pack:
+                    print() # Move to the next line for the next row
+                    for card in booster_pack:
                         print(f"|          | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster_pack:
+                    print() # Move to the next line for the next row
+                    for card in booster_pack:
                         print(f"| {card.name} | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster_pack:
+                    print() # Move to the next line for the next row
+                    for card in booster_pack:
                         print(f"| Str: {card.strength}   | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster_pack:
+                    print() # Move to the next line for the next row
+                    for card in booster_pack:
                         print(f"|          | ", end="")
-                    print()  # Move to the next line for the next row
-                    for card in Booster_pack:
+                    print() # Move to the next line for the next row
+                    for card in booster_pack:
                         print(f"+----------+ ", end="")
-                    print()  # Move to the next line for the next row
+                    print() # Move to the next line for the next row
                     print(f"\n{self.name}'s Deck:")
                     display_rows(self.rows.items())
 
-                    choice = input(f"Enter a number 1-{len(Booster_pack)} to choose a card\n").lower()
+                    choice = input(f"Enter a number 1-{len(booster_pack)} to choose a card\n").lower()
                     choice = int(choice)
-                    if len(Booster_pack) < choice or choice < 1:
-                        os.system('cls')
+                    if len(booster_pack) < choice or choice < 1:
+                        clear_screen()
                         print(Fore.RED + "Invalid choice you muppet!")
                     else:
-                        chosen_card = Booster_pack[choice - 1]
+                        chosen_card = booster_pack[choice - 1]
                         break
             else:  # cpu chooses a random card
-                chosen_card = random.choice(Booster_pack)
+                chosen_card = random.choice(booster_pack)
             # deck building checks
             if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
                 self.deck.append(chosen_card)
@@ -93,31 +96,34 @@ class Player:
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
 
-    def draw_hand(self):
-        random.shuffle(self.deck)
-        # Draw top 10 cards from deck
-        self.hand = self.deck[:10]# Change hand count here
+    def draw_hand(self, num_cards=10,shuffle=False):
+        if shuffle:
+            random.shuffle(self.deck)
+        # Draw cards from the deck
+        self.hand = self.deck[:num_cards]
         # Remove drawn cards from the deck
         self.deck = [card for card in self.deck if card not in self.hand]
 
     def display_deck(self):
-        os.system('cls')
+        #clear_screen()
         print(f"{self.name}'s Deck:")
         for card in self.deck:
             print(f"{card.name} ({card.strength})")
 
     def display_hand(self):
-        os.system('cls')
+        #clear_screen()
         print(f"{self.name}'s Hand:")
         for card in self.hand:
             print(f"{card.name} ({card.strength})")
 
-def play_card(player, card, row):
-    if card.type and row != card.type and card.type is not None:
-        print(f"{player.name}: Cannot play {card.name} in {row}. Must be played in {card.type}.")
+def play_card(player, card):
+    if card.type!="EFFEKTE" or card.type!=None:
+        player.rows[card.type].append(card)
+        print(f"{player.name}: Played {card.name} with strength {card.strength} in {card.type}.")
     else:
-        player.rows[row].append(card)
-        print(f"{player.name}: Played {card.name} with strength {card.strength} in {row}.")
+        player.rows[card.type].append(card)
+        print(f"{player.name}: Played effect {card.name}.")
+    return True # TODO implement rule checks and return false if rule violated
 
 def display_rows(deck):
     for row, cards in deck:
@@ -171,26 +177,10 @@ def check_winner(player1, player2):
 
     return player1_wins, player2_wins
 
-def choose_game_mode():
-    while True:
-        choice = input("Choose a game mode (type '1' to play or '2' to playtest): ").lower()
-        choice = int(choice)
-        if choice == 1 or choice == 2:
-            if int(choice) == 1:
-                name = input("Enter your name: ").lower()
-                player1=Player(name,"human")
-                player2=Player("CPU","pc")
-            else:
-                player1=Player("CPU1","pc")
-                player2=Player("CPU2","pc")
-            return player1,player2
-        else:
-            print("Invalid choice. Please enter '1' or '2'.")
-
 def initialize_players():
     while True:
         try:
-            choice = int(input("Choose a game mode (type '1' to play or '2' to playtest): "))
+            choice = int(input("Choose a game mode (type '1' to play yourself or '2' to simulate): "))
             if choice == 1 or choice == 2:
                 if choice == 1:
                     name = input("Enter your name: ").lower()
@@ -205,44 +195,88 @@ def initialize_players():
         except ValueError:
             print("Invalid input. Please enter a number.")
 
+def get_user_input(prompt, valid_choices):
+    while True:
+        user_input = input(prompt).lower()
+        if user_input in valid_choices:
+            return user_input
+        else:
+            print(f"Invalid input. Please enter one of {valid_choices}.")
+
 def main():
     player1,player2=initialize_players()
+    players = player1,player2 # maybe merge
     # Build decks for each player
-    player1.build_deck()
-    player2.build_deck()
+    booster_instance = Booster()
+
+    for player in players:
+        player.build_deck(booster_instance)
+
     # Display the decks
-    player1.display_deck()
-    player2.display_deck()
+    for player in players:
+        player.display_deck()
+        
+    # Play three rounds
+    for round_num in range(1, 4):
+        print(f"\n--- Round {round_num} ---")
+        # Draw hands for each player in the second and third rounds
+        for player in players:
+            if round_num > 1:
+                player.draw_hand(2)
+            else:
+                player.draw_hand(10,True)
+            
+        # Take turns playing cards
+        for player in players:
+            Turn_complete = False    
+            while not (Turn_complete and player.passed):
+                print(f"\n{player.name}'s Turn:")
+                valid_card = ["{:1d}".format(x) for x in range(len(player.hand))]
+                action = get_user_input("Enter 'p' to pass or number of card to play: ", valid_card+['p'])
 
-    # Take turns playing cards
-    for i in range(10):  # Assuming 10 turns for demonstration purposes
-        # Player 1's turn
-        play_card(player1, player1.deck[i], "FRONT")
-        play_card(player1, player1.deck[i], "GELEHRTE")
-        play_card(player1, player1.deck[i], "UNTERSTUETZUNG")
-
-        # Player 2's turn
-        play_card(player2, player2.deck[i], "FRONT")
-        play_card(player2, player2.deck[i], "GELEHRTE")
-        play_card(player2, player2.deck[i], "UNTERSTUETZUNG")
+                if action == 'p':
+                    print(f"{player.name} passed.")
+                    player.passed = True
+                    Turn_complete = True
+                else:
+                    Turn_complete = play_card(player, player.hand[int(action)])
 
         # Display the current board and sums after each turn
         display_board(player1, player2)
 
-        # Check for winners after each turn
-        player1_wins, player2_wins = check_winner(player1, player2)
 
-        # Display the current score
-        print(f"Current Score - Player 1: {player1_wins}, Player 2: {player2_wins}")
+    # Check for winners after each turn
+    player1_wins, player2_wins = check_winner(player1, player2)
+
+    # Display the current score
+    print(f"Current Score - Player 1: {player1_wins}, Player 2: {player2_wins}")
+
+
+    # Display the current board and sums after each turn
+    display_board(player1, player2)
+
+    # Check for winners after each turn
+    player1_wins, player2_wins = check_winner(player1, player2)
+
+    # Display the current score
+    print(f"Current Score - Player 1: {player1_wins}, Player 2: {player2_wins}")
+
+    # Determine the winner of the round
+    if player1_wins > player2_wins:
+        print(f"Player 1 wins Round {round_num}!")
+    elif player1_wins < player2_wins:
+        print(f"Player 2 wins Round {round_num}!")
+    else:
+        print(f"Round {round_num} is a tie!")
 
     # Final winner determination
     player1_wins, player2_wins = check_winner(player1, player2)
     if player1_wins > player2_wins:
-        print("Player 1 wins!")
+        print("Player 1 wins the game!")
     elif player1_wins < player2_wins:
-        print("Player 2 wins!")
+        print("Player 2 wins the game!")
     else:
-        print("It's a tie!")
+        print("The game is a tie!")
 
 if __name__ == "__main__":
     main()
