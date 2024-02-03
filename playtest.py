@@ -8,6 +8,7 @@ class Row(Enum):
     WISE = "WISE"
     SUPPORT = "SUPPORT"
     EFFECTS = "EFFECTS"
+    ANY = "ANY"
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear') # Clear screen for Linux and Windows
@@ -28,10 +29,10 @@ class Booster:
         self.strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05] # Probabilities
         self.available_effects = ["DRAW1   ","DRAW2   "] # Add effects here TODO match number to effect string with rule check
         self.available_cards = [
-                            Card(Fore.RED + "KNIGHT  "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.FRONT),
-                            Card(Fore.WHITE +"CLERIC  "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.WISE),
-                            Card(Fore.GREEN +"HEALER  "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.SUPPORT),
-                            Card(Fore.YELLOW +"HERO    "+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0]), # Can be played in any row
+                            Card(Fore.RED + "KNIGHT"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.FRONT),
+                            Card(Fore.WHITE +"CLERIC"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.WISE),
+                            Card(Fore.GREEN +"HEALER"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.SUPPORT),
+                            Card(Fore.YELLOW +"HERO"+Fore.WHITE, random.choices(self.available_strength,self.strength_weights)[0], Row.ANY), # Can be played in any row
                             Card(Fore.MAGENTA +random.choice(self.available_effects)+Fore.WHITE, 0, Row.EFFECTS), # Can be played in any row
                             ]
         
@@ -69,7 +70,7 @@ class Player:
                         print(f"|          | ", end="")
                     print() # Move to the next line for the next row
                     for card in booster_pack:
-                        print(f"| {card.name} | ", end="")
+                        print(f"| {card.name}  | ", end="")
                     print() # Move to the next line for the next row
                     for card in booster_pack:
                         print(f"| Str: {card.strength}   | ", end="")
@@ -120,11 +121,13 @@ class Player:
     def display_hand(self):
         #clear_screen()
         print(f"{self.name}'s Hand:")
+        card_number=0
         for card in self.hand:
-            print(f"{card.name} ({card.strength})")
+            print(f"{card_number}{card.name} ({card.strength})", end="")
+            card_number+=card_number
 
 def play_card(player, card):
-    if card.type!="EFFECTS" or card.type!=None:
+    if card.type!=Row.EFFECTS or card.type!=Row.ANY:
         player.rows[card.type].append(card)
         print(f"{player.name}: Played {card.name} with strength {card.strength} in {card.type}.")
     elif card.type==None:
@@ -136,8 +139,10 @@ def play_card(player, card):
         print(f"{player.name}: Played effect {card.name}.")
     return True # TODO implement rule checks and return false if rule violated
 
-def display_rows(deck, display_effects=False):
+def display_rows(deck, display_effects=False, backwards=False):
     colors = {Row.FRONT: Fore.RED, Row.WISE: Fore.WHITE, Row.SUPPORT: Fore.GREEN, Row.EFFECTS: Fore.MAGENTA}
+    if backwards:
+        deck = reversed(deck)
     for row, cards in deck:
         if row == Row.EFFECTS and not display_effects:
             break
@@ -146,7 +151,7 @@ def display_rows(deck, display_effects=False):
         for card in cards:
             print("+----------+ ", end="")
         print()
-        print("\n".join([f"| {card.name} | " for card in cards]))
+        print("\n".join([f"| {card.name}\t| " for card in cards]))
         print("\n".join([f"| Str: {card.strength}   | " for card in cards]))
         print("+----------+" * len(cards))
         print(Fore.WHITE)
@@ -154,10 +159,12 @@ def display_rows(deck, display_effects=False):
 def display_board(players):
     print("\n------ Current Board ------")
     print("###############################################################################################################")
+    backwards=True
     for player in players:
         # Display Player 1's Board
         print(f"{player.name}'s Board:")
-        display_rows(player.rows.items())
+        display_rows(player.rows.items(),backwards)
+        backwards=not backwards
         print("###############################################################################################################")
 
 def display_sum(player):
@@ -178,6 +185,7 @@ def check_winner(player1, player2):
     return player1_wins, player2_wins
 
 def initialize_players():
+    clear_screen()
     while True:
         choice = get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
         if choice == '1':
@@ -221,7 +229,7 @@ def main():
                 player.draw_hand(2)
             else:
                 player.draw_hand(10,True)
-            
+                
         # Take turns playing cards
         for player in players:
             while True:
@@ -229,6 +237,7 @@ def main():
                 print(f"\n{player.name}'s Turn:")
                 # Display the current board and sums after each turn
                 display_board(players)
+                player.display_hand()
                 valid_card = ["{:1d}".format(x) for x in range(len(player.hand))]
                 #valid_card = list(range(len(player.hand)))
                 action = get_user_input("Enter 'p' to pass or number of card to play: ", valid_card + ['p'])
@@ -247,9 +256,6 @@ def main():
 
     # Display the current score
     print(f"Current Score - Player 1: {player1_wins}, Player 2: {player2_wins}")
-
-    # Display the current board and sums after each turn
-    display_board(player1, player2)
 
     # Check for winners after each turn
     player1_wins, player2_wins = check_winner(player1, player2)
