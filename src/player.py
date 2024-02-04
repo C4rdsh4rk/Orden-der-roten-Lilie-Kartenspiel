@@ -1,10 +1,10 @@
 from abc import ABC
-from row import Row
 import random
-from utils import get_user_input,clear_screen   
-from colorama import Fore
-from cards import Card
 import gymnasium as gym #TEST
+from colorama import Fore
+from src.row import Row
+from src.utils import get_user_input
+from src.cards import Card
 
 any_row_choice = {
     1: Row.FRONT,
@@ -28,7 +28,7 @@ class Player(ABC):
             Row.SUPPORT: [],
             Row.EFFECTS: [],
         }
-    
+
     def clear_rows(self):
         self.rows = {
             Row.FRONT: [],
@@ -73,7 +73,10 @@ class Player(ABC):
         row = choosen_card.type
         if row == Row.ANY:
             row = self.make_row_choice(choosen_card)
+        # add card to row to play it and remove it from the hand
         self.rows[row].append(choosen_card)
+        card_index = self.hand.index(choosen_card)
+        self.hand = self.hand[:card_index] + self.hand[card_index+1:]
         print(f"{self.name}: Played {choosen_card.name} with strength {choosen_card.strength} in {choosen_card.type}.")
     
     def make_pass_choice(self) -> bool:
@@ -110,17 +113,17 @@ class Human(Player):
     def make_card_choice(self, valid_choices):
         valid_choices = [str(int(x)+1) for x in valid_choices] # User friendly numbers
         self.display_hand()
-        return self.hand[-1+int(get_user_input(
+        return self.hand[int(get_user_input(
             "Choose a card from your hand:",
             valid_choices
-        ))]
+        ))-1]
     
     def make_row_choice(self, card) -> Row:
         return any_row_choice[
-            get_user_input(
-                "Choose any row for your card",
-                list(any_row_choice.keys())
-            )
+            int(get_user_input(
+                "Chose any row for your card",
+                [str(row_number) for row_number in any_row_choice.keys()]
+            ))
         ]
     
     def make_pass_choice(self) -> bool:
@@ -129,6 +132,7 @@ class Human(Player):
             ["0", "1"]
         )))
     
+    
     def build_deck(self, booster):
         loop_flag = True
         auto_build_deck=get_user_input(
@@ -136,7 +140,7 @@ class Human(Player):
             ["0", "1"]
             )
         while loop_flag:
-            clear_screen()
+            #clear_screen()
             print(f"{self.name} is building his deck")
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
             if not auto_build_deck:
@@ -170,14 +174,13 @@ class Human(Player):
                 continue
 
 
-
 class ArtificialRetardation(Player):
     def __init__(self, name, idiot):
         super().__init__(name, idiot)
         self.reward = 0
 
     def make_card_choice(self, valid_choices):
-        return self.hand[int(random.choice(valid_choices))]
+        return self.hand[int(random.choice(valid_choices))-1]
     
     def make_row_choice(self, card) -> Row:
         return random.choice(list(any_row_choice.values()))
@@ -188,7 +191,7 @@ class ArtificialRetardation(Player):
     def build_deck(self, booster):
         loop_flag = True
         while loop_flag:
-            clear_screen()
+            #clear_screen()
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
             print(f"{self.name} is building his deck")
             self.display_deck()# cpu chooses a random card

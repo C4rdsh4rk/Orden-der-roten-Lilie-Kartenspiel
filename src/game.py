@@ -1,18 +1,18 @@
 import os
-from row import Row
-from gymnasium import Env
-from gymnasium.spaces import Discrete, Box
-from colorama import Fore
-import utils
-from player import Player, Human, ArtificialRetardation
-from cards import Booster
 import logging
 import time
+from colorama import Fore
+import gymnasium as gym
+from gymnasium import spaces
+from src.row import Row
+import src.utils as utils
+from src.player import Human, ArtificialRetardation
+from src.cards import Booster
 
-class game(Env): # Env -> gym Environment
+class game(gym.Env):
     def __init__(self):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        logging.basicConfig(level=logging.DEBUG, filename=str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
         self.players=self.initialize_players()
@@ -26,29 +26,37 @@ class game(Env): # Env -> gym Environment
         self.round_num=0
         self.game_loop()# Start game loop
 
-    def reset_game(self,winner): # gym required method 
-        print(f"{winner.name} won the game with {winner.rounds_won} rounds!")
-        logging.debug(f"{winner.name} won the game!")
+    def _get_obs_AR(self): # gym env method used in step and reset
+        return
+
+    def _get_info_AR(self): # gym env method
+        return
+
+    def display_winner(self):
+        winner = ""
+        if self.players[0].rounds_won < self.players[1].rounds_won:
+            winner = self.players[1].name
+        elif self.players[0].rounds_won > self.players[1].rounds_won:
+            winner = self.players[0].name
+        if winner:
+            print(f"{winner} won the game!")
+        else:
+            print("Draw - No one won the game")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
         logging.debug(f"Game ended - {time_stamp}")
+    
+    def reset_game(self):
         for player in self.players:
             player.deck = []
-            player.hand   = []
+            player.hand = []
             player.score_vector = []
             player.passed = False
             player.rounds_won = 0
             player.clear_rows()
             #self.__init__()# infinite game loop
             self.round_num=5
-
-    def reward_function(self):
-        for player in self.players:
-            if player.idiot == "pc":
-                player.reward+=player.turn_score
-                logging.debug(f"REWARD:{player.name} {player.reward}")
-        return
-
-    def step(self): # gym required method 
+            
+    def play_round(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
         for player in self.players:
@@ -59,6 +67,7 @@ class game(Env): # Env -> gym Environment
             else:
                 player.draw_hand(10,True)
             logging.debug(f"{player.name} drew cards")
+        self.players[0].display_hand()
         while(True):
             # Take turns playing cards
             for player in self.players:
@@ -67,15 +76,33 @@ class game(Env): # Env -> gym Environment
                     continue
                 print(f"\n{player.name}'s Turn:")
                 player.play_card()
-                self.render(self.players)
-                player.display_hand()
-            self.check_score()
-            self.reward_function() # gym required
+                if player.passed:
+                    print(f"{player.name} passed!")
+                    continue
+            self.display_board(self.players)
+            self.players[0].display_hand()
+            self.update_row_scores()
+            self.display_row_scores()
             # Display the current score
-            print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
-            if(self.check_winning()):
+            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score},{self.players[1].name}: {self.players[1].turn_score}")
+            if(self.players[0].passed and self.players[1].passed):
+                self.update_win_points()
                 break
+        self.display_round_result()
         return
+    
+    def display_round_result(self) -> None:
+        winner = ""
+        if self.players[0].turn_score > self.players[1].turn_score:
+            winner = self.players[0].name
+        elif self.players[0].turn_score < self.players[1].turn_score:
+            winner = self.players[1].name
+        else:
+            print("The round was a draw, one point to both players!")
+        if winner:
+            print(f"\n--- Player {winner} won round {self.round_num} ---")
+        print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
+
 
     def initialize_players(self):
         utils.clear_screen()
@@ -126,10 +153,11 @@ class game(Env): # Env -> gym Environment
             print(f"{'+----------+ '*len(cards)}")
             print(Fore.WHITE)
 
-    def render(self,players): # gym required method 
+    def display_board(self,players):
         print("\n------ Current Board ------")
         print("###############################################################################################################")
         for player in players:
+            # Display Player 1's Board
             print(f"{player.name}'s Board:")
             self.display_rows(list(player.rows.items()), False, player==players[0])
             print("###############################################################################################################")
@@ -139,48 +167,34 @@ class game(Env): # Env -> gym Environment
         for row, cards in player.rows.items():
             print(f"{row}: {sum(card.strength for card in cards)}")
 
-    def check_winning(self):
-        if(self.players[0].passed == True and self.players[1].passed == True):
-            if self.players[0].turn_score>self.players[1].turn_score:
-                self.players[0].rounds_won+=1
-            elif self.players[1].turn_score>self.players[0].turn_score:
-                self.players[1].rounds_won+=1
-            else:
-                self.players[0].rounds_won+=1
-                self.players[1].rounds_won+=1 
-            if (self.players[0].rounds_won>=2 and self.players[1].rounds_won<self.players[0].rounds_won):
-                winner=self.players[0]
-                self.reset_game(winner)
-            elif (self.players[1].rounds_won>=2 and self.players[0].rounds_won<self.players[1].rounds_won):
-                winner=self.players[1]
-                self.reset_game(winner)
-            return True
-        else:
-            return False
+    def update_win_points(self):
+        if self.players[0].turn_score >= self.players[1].turn_score:
+            self.players[0].rounds_won+=1
+        if self.players[1].turn_score >= self.players[0].turn_score:
+            self.players[1].rounds_won+=1
 
-    def check_score(self):
+    def update_row_scores(self):
         player1_score = 0
         player2_score = 0
         for row in self.players[0].rows:
-            if row == Row.EFFECTS:
-                continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
                 player1_score += 1
             if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
                 player2_score += 1
         self.players[0].turn_score = player1_score
         self.players[1].turn_score = player2_score
-
-        print(f"\n{self.players[0].name} won {self.players[0].rounds_won} rounds\t-\t",end="")
-        print(f"{self.players[1].name} won {self.players[1].rounds_won} rounds")
-        logging.debug(f"{self.players[0].name} won {self.players[0].rounds_won} rounds\n{self.players[1].name} won {self.players[1].rounds_won} rounds")
-        logging.debug(f"{self.players[0].name}'s score: {self.players[0].turn_score}\n{self.players[1].name}'s score: {self.players[1].turn_score}")
-        
-        return player1_score, player2_score
+    
+    def display_row_scores(self):
+        logging.debug(
+            f"{self.players[0].name}'s wins {self.players[0].turn_score} rows\n"\
+            f"{self.players[1].name}'s wins {self.players[1].turn_score} rows"
+        )
     
     def game_loop(self):
         # Play three rounds
         self.round_num=1
-        while(self.round_num<4):
-            self.step()
+        while(self.players[0].rounds_won<3 and self.players[1].rounds_won<3):
+            self.play_round()
             self.round_num+=1
+        self.display_winner()
+        self.reset_game()

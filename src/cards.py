@@ -1,6 +1,6 @@
-from colorama import Fore
-from row import Row
 import random
+from colorama import Fore
+from src.row import Row
 
 
 class Card:  
