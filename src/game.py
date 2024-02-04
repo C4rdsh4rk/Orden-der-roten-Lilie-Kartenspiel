@@ -10,7 +10,7 @@ import logging
 import time
 
 class game(Env): # Env -> gym Environment
-    def __init__(self):
+    def __init__(self, training=False):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
@@ -24,7 +24,8 @@ class game(Env): # Env -> gym Environment
         for player in self.players:
             player.display_deck()
         self.round_num=0
-        self.game_loop()# Start game loop
+        if not training:
+            self.game_loop()# Start game loop
 
     def reset_game(self,winner): # gym required method 
         print(f"{winner.name} won the game with {winner.rounds_won} rounds!")
@@ -71,11 +72,10 @@ class game(Env): # Env -> gym Environment
                 player.display_hand()
             self.check_score()
             self.reward_function() # gym required
-            # Display the current score
-            print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
+            
             if(self.check_winning()):
                 break
-        return
+        return self.players, self.check_winning()# gym needs return game state, reward(?), done and info
 
     def initialize_players(self):
         utils.clear_screen()
@@ -127,6 +127,7 @@ class game(Env): # Env -> gym Environment
             print(Fore.WHITE)
 
     def render(self,players): # gym required method 
+        print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
         print("\n------ Current Board ------")
         print("###############################################################################################################")
         for player in players:
