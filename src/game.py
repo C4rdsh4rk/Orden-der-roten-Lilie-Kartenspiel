@@ -11,8 +11,9 @@ import time
 
 class game(gym.Env):
     def __init__(self):
-        logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w', format='%(message)s')
-        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
+        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
+        logging.basicConfig(level=logging.DEBUG, filename=str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
         self.players=self.initialize_players()
         # Build decks for each player
@@ -22,6 +23,7 @@ class game(gym.Env):
         # Display the decks
         for player in self.players:
             player.display_deck()
+        self.round_num=0
         self.game_loop()# Start game loop
 
     def _get_obs_AR(self): # gym env method used in step and reset
@@ -30,30 +32,32 @@ class game(gym.Env):
     def _get_info_AR(self): # gym env method
         return
 
-    def reset_game(self): #
+    def reset_game(self,winner): #
+        print(f"{winner.name} won the game!")
+        logging.debug(f"{winner.name} won the game!")
+        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
+        logging.debug(f"Game ended - {time_stamp}")
         for player in self.players:
             player.deck = []
             player.hand   = []
             player.score_vector = []
             player.passed = False
             player.rounds_won = 0
-            player.rows = {
-                Row.FRONT: [],
-                Row.WISE: [],
-                Row.SUPPORT: [],
-                Row.EFFECTS: [],
-                }
+            player.clear_rows()
+            #self.__init__()# infinite game loop
+            self.round_num=5
             
-    def step(self,round_num):
-        print(f"\n--- Round {round_num} ---")
+    def step(self):
+        print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
         for player in self.players:
-            if round_num > 1:
+            if self.round_num > 1:
                 player.draw_hand(2)
                 player.passed = False
                 player.clear_rows()
             else:
                 player.draw_hand(10,True)
+            logging.debug(f"{player.name} drew cards")
         while(True):
             # Take turns playing cards
             for player in self.players:
@@ -143,6 +147,12 @@ class game(gym.Env):
             else:
                 self.players[0].rounds_won+=1
                 self.players[1].rounds_won+=1 
+            if (self.players[0].rounds_won>=2 and self.players[1].rounds_won<self.players[0].rounds_won):
+                winner=self.players[0]
+                self.reset_game(winner)
+            elif (self.players[1].rounds_won>=2 and self.players[0].rounds_won<self.players[1].rounds_won):
+                winner=self.players[1]
+                self.reset_game(winner)
             return True
         else:
             return False
@@ -159,9 +169,13 @@ class game(gym.Env):
         self.players[1].turn_score = player2_score
         print(f"\n{self.players[0].name} won {self.players[0].rounds_won} rounds\t",end="")
         print(f"{self.players[1].name} won {self.players[1].rounds_won} rounds")
+        logging.debug(f"{self.players[0].name} won {self.players[0].rounds_won} rounds\n{self.players[1].name} won {self.players[1].rounds_won} rounds")
+        logging.debug(f"{self.players[0].name}'s score: {self.players[0].turn_score}\n{self.players[1].name}'s score: {self.players[1].turn_score}")
         return player1_score, player2_score
     
     def game_loop(self):
         # Play three rounds
-        for round_num in range(1, 4):
-            self.step(round_num)
+        self.round_num=1
+        while(self.round_num<4):
+            self.step()
+            self.round_num+=1
