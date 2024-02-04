@@ -49,7 +49,14 @@ class game(Env): # Env -> gym Environment
             player.clear_rows()
             #self.__init__()# infinite game loop
             self.round_num=5
-            
+
+    def reward_function(self):
+        for player in self.players:
+            if player.idiot == "pc":
+                player.reward+=player.turn_score
+                logging.debug(f"REWARD:{player.name} {player.reward}")
+        return
+    
     def step(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
