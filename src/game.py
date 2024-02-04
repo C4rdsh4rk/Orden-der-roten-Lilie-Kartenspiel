@@ -33,7 +33,7 @@ class game(gym.Env):
         return
 
     def reset_game(self,winner): #
-        print(f"{winner.name} won the game!")
+        print(f"{winner.name} won the game with {winner.rounds_won} rounds!")
         logging.debug(f"{winner.name} won the game!")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
         logging.debug(f"Game ended - {time_stamp}")
@@ -70,7 +70,7 @@ class game(gym.Env):
                 player.display_hand()
             self.check_score()
             # Display the current score
-            print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score},{self.players[1].name}: {self.players[1].turn_score}")
+            print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
             if(self.check_winning()):
                 break
         return
@@ -128,7 +128,6 @@ class game(gym.Env):
         print("\n------ Current Board ------")
         print("###############################################################################################################")
         for player in players:
-            # Display Player 1's Board
             print(f"{player.name}'s Board:")
             self.display_rows(list(player.rows.items()), False, player==players[0])
             print("###############################################################################################################")
@@ -161,16 +160,20 @@ class game(gym.Env):
         player1_score = 0
         player2_score = 0
         for row in self.players[0].rows:
+            if row == Row.EFFECTS:
+                continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
                 player1_score += 1
             if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
                 player2_score += 1
         self.players[0].turn_score = player1_score
         self.players[1].turn_score = player2_score
-        print(f"\n{self.players[0].name} won {self.players[0].rounds_won} rounds\t",end="")
+
+        print(f"\n{self.players[0].name} won {self.players[0].rounds_won} rounds\t-\t",end="")
         print(f"{self.players[1].name} won {self.players[1].rounds_won} rounds")
         logging.debug(f"{self.players[0].name} won {self.players[0].rounds_won} rounds\n{self.players[1].name} won {self.players[1].rounds_won} rounds")
         logging.debug(f"{self.players[0].name}'s score: {self.players[0].turn_score}\n{self.players[1].name}'s score: {self.players[1].turn_score}")
+        
         return player1_score, player2_score
     
     def game_loop(self):

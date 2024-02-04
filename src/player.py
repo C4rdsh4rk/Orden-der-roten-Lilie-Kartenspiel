@@ -1,11 +1,10 @@
 from abc import ABC
 from row import Row
 import random
-from utils import get_user_input
+from utils import get_user_input,clear_screen   
 from colorama import Fore
 from cards import Card
 import gymnasium as gym #TEST
-
 
 any_row_choice = {
     1: Row.FRONT,
@@ -41,42 +40,6 @@ class Player(ABC):
     def get_row_sum(self, row) -> list[int]:
         return sum(card.strength for card in self.rows[row])
     
-    def build_deck(self, booster):
-        loop_flag = True
-        while loop_flag:
-            #clear_screen()
-            print(f"{self.name} is building his deck")
-            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            if self.idiot == "human":
-                print("Choose cards for your deck")
-                print("Available Cards:\n" + Fore.WHITE)
-                print(f"{'+----------+ '*len(booster_pack)}")
-                print(f"{'|          | '*len(booster_pack)}")
-                print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in booster_pack]))
-                print(" ".join([f"| Str: {card.strength}   |" for card in booster_pack]))
-                print(f"{'|          | '*len(booster_pack)}")
-                print(f"{'+----------+ '*len(booster_pack)}")
-
-                self.display_deck()
-
-                choice = get_user_input(
-                    f"Enter a number 1-{len(booster_pack)} to choose a card\n",
-                    [str(number) for number in range(1, len(booster_pack)+1)]
-                )
-                choice = int(choice)
-                chosen_card = booster_pack[choice - 1]
-            else:  # cpu chooses a random card
-                chosen_card = random.choice(booster_pack)
-            # deck building checks
-            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
-                self.deck.append(chosen_card)
-            elif sum(card.strength for card in self.deck) == 38:
-                break
-            else:
-                print("Value exceeds maximum deck strength, try again. (not your fault)")
-                # If adding the card exceeds the total strength constraint, try another card
-                continue
-
     def draw_hand(self, num_cards=10,shuffle=False):
         if shuffle:
             random.shuffle(self.deck)
@@ -145,15 +108,17 @@ class Player(ABC):
 
 class Human(Player):
     def make_card_choice(self, valid_choices):
-        return self.hand[int(get_user_input(
-            "Chose a card from your deck",
+        valid_choices = [str(int(x)+1) for x in valid_choices] # User friendly numbers
+        self.display_hand()
+        return self.hand[-1+int(get_user_input(
+            "Choose a card from your hand:",
             valid_choices
         ))]
     
     def make_row_choice(self, card) -> Row:
         return any_row_choice[
             get_user_input(
-                "Chose any row for your card",
+                "Choose any row for your card",
                 list(any_row_choice.keys())
             )
         ]
@@ -163,6 +128,48 @@ class Human(Player):
             "Pass? 0 - No, 1 - Yes: ",
             ["0", "1"]
         )))
+    
+    def build_deck(self, booster):
+        loop_flag = True
+        auto_build_deck=get_user_input(
+            f"Do you want a random deck? 0 - No, 1 - Yes:",
+            ["0", "1"]
+            )
+        while loop_flag:
+            clear_screen()
+            print(f"{self.name} is building his deck")
+            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
+            if not auto_build_deck:
+                print("Choose cards for your deck")
+                print("Available Cards:\n" + Fore.WHITE)
+                print(f"{'+----------+ '*len(booster_pack)}")
+                print(f"{'|          | '*len(booster_pack)}")
+                print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in booster_pack]))
+                print(" ".join([f"| Str: {card.strength}   |" for card in booster_pack]))
+                print(f"{'|          | '*len(booster_pack)}")
+                print(f"{'+----------+ '*len(booster_pack)}")
+
+                self.display_deck()
+
+                choice = get_user_input(
+                    f"Enter a number 1-{len(booster_pack)} to choose a card\n",
+                    [str(number) for number in range(1, len(booster_pack)+1)]
+                )
+                choice = int(choice)
+                chosen_card = booster_pack[choice - 1]
+            else:  # cpu chooses a random card
+                chosen_card = random.choice(booster_pack)
+            # deck building checks
+            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
+                self.deck.append(chosen_card)
+            elif sum(card.strength for card in self.deck) == 38:
+                break
+            else:
+                print("Value exceeds maximum deck strength, try again. (not your fault)")
+                # If adding the card exceeds the total strength constraint, try another card
+                continue
+
+
 
 class ArtificialRetardation(Player):
     def __init__(self, name, idiot):
@@ -176,3 +183,21 @@ class ArtificialRetardation(Player):
     
     def make_pass_choice(self) -> bool:
         return random.choice([False, True])
+    
+    def build_deck(self, booster):
+        loop_flag = True
+        while loop_flag:
+            clear_screen()
+            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
+            print(f"{self.name} is building his deck")
+            self.display_deck()# cpu chooses a random card
+            chosen_card = random.choice(booster_pack)
+            # deck building checks
+            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
+                self.deck.append(chosen_card)
+            elif sum(card.strength for card in self.deck) == 38:
+                break
+            else:
+                #print("Value exceeds maximum deck strength, try again. (not your fault)")
+                # If adding the card exceeds the total strength constraint, try another card
+                continue
