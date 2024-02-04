@@ -6,10 +6,14 @@ from colorama import Fore
 import utils
 from player import Player, Human, ArtificialRetardation
 from cards import Booster
-
+import logging
+import time
 
 class game(gym.Env):
     def __init__(self):
+        logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w', format='%(message)s')
+        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
+        logging.debug(f"Game started - {time_stamp}")
         self.players=self.initialize_players()
         # Build decks for each player
         booster_instance = Booster()
