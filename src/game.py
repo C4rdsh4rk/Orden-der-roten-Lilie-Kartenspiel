@@ -1,7 +1,7 @@
 import os
 from row import Row
-import gymnasium as gym
-from gymnasium import spaces
+from gymnasium import Env
+from gymnasium.spaces import Discrete, Box
 from colorama import Fore
 import utils
 from player import Player, Human, ArtificialRetardation
@@ -9,10 +9,10 @@ from cards import Booster
 import logging
 import time
 
-class game(gym.Env):
+class game(Env): # Env -> gym Environment
     def __init__(self):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.DEBUG, filename=str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
         self.players=self.initialize_players()
@@ -26,13 +26,7 @@ class game(gym.Env):
         self.round_num=0
         self.game_loop()# Start game loop
 
-    def _get_obs_AR(self): # gym env method used in step and reset
-        return
-
-    def _get_info_AR(self): # gym env method
-        return
-
-    def reset_game(self,winner): #
+    def reset_game(self,winner): # gym required method 
         print(f"{winner.name} won the game with {winner.rounds_won} rounds!")
         logging.debug(f"{winner.name} won the game!")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
@@ -46,8 +40,15 @@ class game(gym.Env):
             player.clear_rows()
             #self.__init__()# infinite game loop
             self.round_num=5
-            
-    def step(self):
+
+    def reward_function(self):
+        for player in self.players:
+            if player.idiot == "pc":
+                player.reward+=player.turn_score
+                logging.debug(f"REWARD:{player.name} {player.reward}")
+        return
+
+    def step(self): # gym required method 
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
         for player in self.players:
@@ -66,9 +67,10 @@ class game(gym.Env):
                     continue
                 print(f"\n{player.name}'s Turn:")
                 player.play_card()
-                self.display_board(self.players)
+                self.render(self.players)
                 player.display_hand()
             self.check_score()
+            self.reward_function() # gym required
             # Display the current score
             print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
             if(self.check_winning()):
@@ -124,7 +126,7 @@ class game(gym.Env):
             print(f"{'+----------+ '*len(cards)}")
             print(Fore.WHITE)
 
-    def display_board(self,players):
+    def render(self,players): # gym required method 
         print("\n------ Current Board ------")
         print("###############################################################################################################")
         for player in players:
