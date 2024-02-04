@@ -14,13 +14,11 @@ def main():
     state = env.reset()
     done = False
     score = 0 
-    
-    while not done:
-        #env.render()
-        action = env.action_space.sample()
-        n_state, reward, done, info = env.step(action)
-        score+=reward
-    print('Episode:{} Score:{}'.format(episode, score))
+        while not done:
+            #env.render()
+            action = env.action_space.sample()
+            n_state, reward, done, info = env.step(action)
+        print('Episode:{} Score:{}'.format(episode, reward))
 
 if __name__ == "__main__":
     main()

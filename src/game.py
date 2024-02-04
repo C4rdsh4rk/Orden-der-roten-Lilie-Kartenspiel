@@ -57,7 +57,7 @@ class game(Env): # Env -> gym Environment
                 logging.debug(f"REWARD:{player.name} {player.reward}")
         return
     
-    def step(self):
+    def play_round(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
         for player in self.players:
@@ -105,7 +105,6 @@ class game(Env): # Env -> gym Environment
         if winner:
             print(f"\n--- Player {winner} won round {self.round_num} ---")
         print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
-
 
     def initialize_players(self):
         utils.clear_screen()
@@ -200,7 +199,7 @@ class game(Env): # Env -> gym Environment
         # Play three rounds
         self.round_num=1
         while(self.players[0].rounds_won<3 and self.players[1].rounds_won<3):
-            self.step()
+            self.play_round()
             self.round_num+=1
         self.display_winner()
         self.reset_game()
