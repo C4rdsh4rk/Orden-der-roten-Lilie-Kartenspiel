@@ -14,7 +14,10 @@ class game(Env): # Env -> gym Environment
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
-        self.players=self.initialize_players()
+        if training:
+            self.players=self.initialize_players(training)
+        else:
+            self.players=self.initialize_players()
         # Build decks for each player
         booster_instance = Booster()
         for player in self.players:
@@ -23,7 +26,10 @@ class game(Env): # Env -> gym Environment
         for player in self.players:
             player.display_deck()
         self.round_num=0
-        if not training:
+        if training:
+            self.action_space = Discrete(50)
+            self.observation_space = {}
+        else:
             self.game_loop()# Start game loop
 
     def display_winner(self):
@@ -57,6 +63,9 @@ class game(Env): # Env -> gym Environment
                 logging.debug(f"REWARD:{player.name} {player.reward}")
         return
     
+    def step(self,ar_action):
+        return n_state, reward, done, info
+
     def play_round(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
@@ -91,8 +100,7 @@ class game(Env): # Env -> gym Environment
                 self.update_win_points()
                 break
         self.display_round_result()
-        
-        return self.players#, self.check_winning()# gym needs return game state, reward(?), done and info
+        return
 
     def display_round_result(self) -> None:
         winner = ""
@@ -106,19 +114,23 @@ class game(Env): # Env -> gym Environment
             print(f"\n--- Player {winner} won round {self.round_num} ---")
         print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
 
-    def initialize_players(self):
+    def initialize_players(self,training=False):
         utils.clear_screen()
-        while True:
-            choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
-            if choice == '1':
-                name = input("Enter your name: ").lower()
-                player1 = Human(name, "human")
-                player2 = ArtificialRetardation("Trained Monkey", "pc")
-                break
-            else:
-                player1 = ArtificialRetardation("Trained Monkey", "pc")
-                player2 = ArtificialRetardation("Clueless Robot", "pc")
-                break
+        if not training:
+            while True:
+                choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
+                if choice == '1':
+                    name = input("Enter your name: ").lower()
+                    player1 = Human(name, "human")
+                    player2 = ArtificialRetardation("Trained Monkey", "pc")
+                    break
+                else:
+                    player1 = ArtificialRetardation("Trained Monkey", "pc")
+                    player2 = ArtificialRetardation("Clueless Robot", "pc")
+                    break
+        else:
+            player1 = ArtificialRetardation("Neural Nutjob", "nn")
+            player2 = ArtificialRetardation("Trained Monkey", "pc")
         return player1, player2
 
     def resolve_effect(self,player,card):
