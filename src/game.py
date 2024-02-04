@@ -1,17 +1,17 @@
-import os
 import logging
 import time
 from colorama import Fore
-import gymnasium as gym
-from gymnasium import spaces
+from gymnasium import Env
+from gymnasium.spaces import Discrete, Box
 from src.row import Row
 import src.utils as utils
 from src.player import Human, ArtificialRetardation
 from src.cards import Booster
-class game(gym.Env): # Env -> gym Environment
+
+class game(Env): # Env -> gym Environment
     def __init__(self, training=False):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.DEBUG, filename=str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
         self.players=self.initialize_players()
@@ -50,7 +50,7 @@ class game(gym.Env): # Env -> gym Environment
             #self.__init__()# infinite game loop
             self.round_num=5
             
-    def play_round(self):
+    def step(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
         for player in self.players:
@@ -74,7 +74,7 @@ class game(gym.Env): # Env -> gym Environment
                 if player.passed:
                     print(f"{player.name} passed!")
                     continue
-            self.display_board(self.players)
+            self.render(self.players)
             self.players[0].display_hand()
             self.update_row_scores()
             self.display_row_scores()
@@ -85,44 +85,7 @@ class game(gym.Env): # Env -> gym Environment
                 break
         self.display_round_result()
         
-        return self.players, self.check_winning()# gym needs return game state, reward(?), done and info
-
-'''
-                player.display_hand()
-            self.check_score()
-            self.reward_function() # gym required
-            
-            if(self.check_winning()):
-                break
-        return self.players, self.check_winning()# gym needs return game state, reward(?), done and info
-
-                if player.passed:
-                    print(f"{player.name} passed!")
-                    continue
-            self.display_board(self.players)
-            self.players[0].display_hand()
-            self.update_row_scores()
-            self.display_row_scores()
-            # Display the current score
-            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score},{self.players[1].name}: {self.players[1].turn_score}")
-            if(self.players[0].passed and self.players[1].passed):
-                self.update_win_points()
-                break
-        self.display_round_result()
-        return
-    '''
-
-    def display_round_result(self) -> None:
-        winner = ""
-        if self.players[0].turn_score > self.players[1].turn_score:
-            winner = self.players[0].name
-        elif self.players[0].turn_score < self.players[1].turn_score:
-            winner = self.players[1].name
-        else:
-            print("The round was a draw, one point to both players!")
-        if winner:
-            print(f"\n--- Player {winner} won round {self.round_num} ---")
-        print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
+        return self.players#, self.check_winning()# gym needs return game state, reward(?), done and info
 
     def display_round_result(self) -> None:
         winner = ""
@@ -228,7 +191,7 @@ class game(gym.Env): # Env -> gym Environment
         # Play three rounds
         self.round_num=1
         while(self.players[0].rounds_won<3 and self.players[1].rounds_won<3):
-            self.play_round()
+            self.step()
             self.round_num+=1
         self.display_winner()
         self.reset_game()
