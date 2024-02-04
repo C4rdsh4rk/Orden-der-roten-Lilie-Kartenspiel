@@ -18,7 +18,7 @@ class game(gym.Env):
         # Display the decks
         for player in self.players:
             player.display_deck()
-        self.game_loop(self.players)# Start game loop
+        self.game_loop()# Start game loop
 
     def _get_obs_AR(self): # gym env method used in step and reset
         return
@@ -62,7 +62,7 @@ class game(gym.Env):
                 player.display_hand()
             self.check_score()
             # Display the current score
-            print(f"Current Score - Player 1: {self.players[0].turn_score}, Player 2: {self.players[1].turn_score}")
+            print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score},{self.players[1].name}: {self.players[1].turn_score}")
             if(self.check_winning()):
                 break
         return
@@ -73,12 +73,12 @@ class game(gym.Env):
             choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
             if choice == '1':
                 name = input("Enter your name: ").lower()
-                player1 = Player.Human(name, "human")
-                player2 = Player.ArtificialRetardation("Trained Monkey", "pc")
+                player1 = Human(name, "human")
+                player2 = ArtificialRetardation("Trained Monkey", "pc")
                 break
             else:
-                player1 = Player.ArtificialRetardation("Trained Monkey", "pc")
-                player2 = Player.ArtificialRetardation("Clueless Robot", "pc")
+                player1 = ArtificialRetardation("Trained Monkey", "pc")
+                player2 = ArtificialRetardation("Clueless Robot", "pc")
                 break
         return player1, player2
 
@@ -143,7 +143,7 @@ class game(gym.Env):
         else:
             return False
 
-    def check_score(self,players):
+    def check_score(self):
         player1_score = 0
         player2_score = 0
         for row in self.players[0].rows:
@@ -151,42 +151,13 @@ class game(gym.Env):
                 player1_score += 1
             if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
                 player2_score += 1
-        players[0].turn_score = player1_score
-        players[1].turn_score = player2_score
+        self.players[0].turn_score = player1_score
+        self.players[1].turn_score = player2_score
+        print(f"\n{self.players[0].name} won {self.players[0].rounds_won} rounds\t",end="")
+        print(f"{self.players[1].name} won {self.players[1].rounds_won} rounds")
         return player1_score, player2_score
     
     def game_loop(self):
         # Play three rounds
         for round_num in range(1, 4):
-            print(f"\n--- Round {round_num} ---")
-            # Draw hands for each player in the second and third rounds
-            for player in self.players:
-                if round_num > 1:
-                    player.draw_hand(2)
-                    player.passed = False
-                    player.clear_rows()
-                else:
-                    player.draw_hand(10,True)
-            while(True):
-                # Take turns playing cards
-                for player in self.players:
-                    # skip player if he has passed
-                    if player.passed:
-                        continue
-
-                    print(f"\n{player.name}'s Turn:")
-                    player.play_card()
-                    self.display_board(self.players)
-                    player.display_hand()
-                player1_score, player2_score = self.check_score(self.players)
-                # Display the current score
-                print(f"Current Score - Player 1: {player1_score}, Player 2: {player2_score}")
-                if(self.players[0].passed == True and self.players[1].passed == True):
-                    if player1_score>player2_score:
-                        self.players[0].rounds_won+=1
-                    elif player2_score>player1_score:
-                        self.players[1].rounds_won+=1
-                    else:
-                        self.players[0].rounds_won+=1
-                        self.players[1].rounds_won+=1          
-                    break
+            self.step(round_num)
