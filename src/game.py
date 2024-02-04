@@ -8,7 +8,6 @@ from src.row import Row
 import src.utils as utils
 from src.player import Human, ArtificialRetardation
 from src.cards import Booster
-
 class game(gym.Env): # Env -> gym Environment
     def __init__(self, training=False):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
@@ -26,12 +25,6 @@ class game(gym.Env): # Env -> gym Environment
         self.round_num=0
         if not training:
             self.game_loop()# Start game loop
-
-    def _get_obs_AR(self): # gym env method used in step and reset
-        return
-
-    def _get_info_AR(self): # gym env method
-        return
 
     def display_winner(self):
         winner = ""
@@ -91,7 +84,9 @@ class game(gym.Env): # Env -> gym Environment
                 self.update_win_points()
                 break
         self.display_round_result()
+        
         return self.players, self.check_winning()# gym needs return game state, reward(?), done and info
+
 '''
                 player.display_hand()
             self.check_score()
@@ -116,6 +111,7 @@ class game(gym.Env): # Env -> gym Environment
         self.display_round_result()
         return
     '''
+
     def display_round_result(self) -> None:
         winner = ""
         if self.players[0].turn_score > self.players[1].turn_score:
