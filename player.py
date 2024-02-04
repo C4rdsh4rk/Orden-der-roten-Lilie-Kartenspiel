@@ -1,21 +1,46 @@
+from abc import ABC
 from row import Row
 import random
 from utils import get_user_input
+from colorama import Fore
+from cards import Card
+import gymnasium as gym #TEST
 
-class Player:
+
+any_row_choice = {
+    1: Row.FRONT,
+    2: Row.WISE,
+    3: Row.SUPPORT
+}
+
+class Player(ABC):
     def __init__(self, name, idiot):
         self.name = name
         self.idiot = idiot
         self.deck = []
         self.hand = [] # Add a hand attribute
+        self.score_vector = []
+        self.turn_score = 0
         self.passed = False
+        self.rounds_won = 0
         self.rows = {
             Row.FRONT: [],
             Row.WISE: [],
             Row.SUPPORT: [],
             Row.EFFECTS: [],
         }
-
+    
+    def clear_rows(self):
+        self.rows = {
+            Row.FRONT: [],
+            Row.WISE: [],
+            Row.SUPPORT: [],
+            Row.EFFECTS: [],
+        }
+    
+    def get_row_sum(self, row) -> list[int]:
+        return sum(card.strength for card in self.rows[row])
+    
     def build_deck(self, booster):
         loop_flag = True
         while loop_flag:
@@ -56,9 +81,9 @@ class Player:
         if shuffle:
             random.shuffle(self.deck)
         # Draw cards from the deck
-        self.hand = self.deck[:num_cards]
+        self.hand = self.hand + self.deck[:num_cards]
         # Remove drawn cards from the deck
-        self.deck = [card for card in self.deck if card not in self.hand]
+        self.deck = self.deck[num_cards:]
 
     def display_deck(self):
         #clear_screen()
@@ -73,3 +98,81 @@ class Player:
         for card in self.hand:
             print(f"[{card_number}]{card.name} ({card.strength})", end="")
             card_number+=1
+    
+    def play_card(self) -> None:
+        if self.make_pass_choice():
+            self.passed = True
+            return
+
+        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
+        choosen_card = self.make_card_choice(valid_choices)
+        
+        row = choosen_card.type
+        if row == Row.ANY:
+            row = self.make_row_choice(choosen_card)
+        self.rows[row].append(choosen_card)
+        print(f"{self.name}: Played {choosen_card.name} with strength {choosen_card.strength} in {choosen_card.type}.")
+    
+    def make_pass_choice(self) -> bool:
+        """
+        Function that determines if the player passes
+        """
+        raise NotImplementedError
+
+    def make_card_choice(self, valid_choices: list) -> Card:
+        """
+        Interface function that must return exactly one card that is played by the player.
+        The card must be in the valid_choices.
+        
+        Args:
+            valid_choices (list[Card]): Possible cards to play
+        
+        Returns:
+            Card: Card that is played"""
+        raise NotImplementedError
+    
+    def make_row_choice(self, card: Card) -> Row:
+        """
+        Interface function that must return exactly one row where the given card should be played in.
+
+        Args: 
+            card (Card): Card that is played
+        
+            Returns:
+                Row: the row in which the card should be played
+        """
+        raise NotImplementedError
+
+class Human(Player):
+    def make_card_choice(self, valid_choices):
+        return self.hand[int(get_user_input(
+            "Chose a card from your deck",
+            valid_choices
+        ))]
+    
+    def make_row_choice(self, card) -> Row:
+        return any_row_choice[
+            get_user_input(
+                "Chose any row for your card",
+                list(any_row_choice.keys())
+            )
+        ]
+    
+    def make_pass_choice(self) -> bool:
+        return bool(int(get_user_input(
+            "Pass? 0 - No, 1 - Yes: ",
+            ["0", "1"]
+        )))
+
+class ArtificialRetardation(Player):
+    def __init__(self, name, idiot):
+        super().__init__(name, idiot)
+
+    def make_card_choice(self, valid_choices):
+        return self.hand[int(random.choice(valid_choices))]
+    
+    def make_row_choice(self, card) -> Row:
+        return random.choice(any_row_choice.values())
+    
+    def make_pass_choice(self) -> bool:
+        return random.choice([False, True])
