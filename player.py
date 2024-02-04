@@ -172,7 +172,7 @@ class ArtificialRetardation(Player):
         return self.hand[int(random.choice(valid_choices))]
     
     def make_row_choice(self, card) -> Row:
-        return random.choice(any_row_choice.values())
+        return random.choice(list(any_row_choice.values()))
     
     def make_pass_choice(self) -> bool:
         return random.choice([False, True])
