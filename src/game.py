@@ -174,6 +174,8 @@ class game(Env): # Env -> gym Environment
         player1_score = 0
         player2_score = 0
         for row in self.players[0].rows:
+            if row == Row.EFFECTS:
+                continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
                 player1_score += 1
             if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
