@@ -91,14 +91,15 @@ class game(Env): # Env -> gym Environment
         return state, self.reward_function(self.players[0]), self.done, info
     
     def play_turn(self,player,ar_action=None): # Normal turn
-        if not ar_action==None:
+        if len(player.hand)==0:
+            player.passed = True
+        if not ar_action==None and not player.passed:
             if ar_action == 'p':
                 player.passed = True
             elif ar_action:
                 player.play_card()
-        else:
+        if not player.passed and ar_action==None:
             player.make_pass_choice()
-        if not player.passed:
             print(f"\n{player.name}'s Turn:")
             player.play_card()
             self.render(self.players)
@@ -111,6 +112,9 @@ class game(Env): # Env -> gym Environment
 
     def play_round(self):
         # Draw hands for each player in the second and third rounds
+        if self.round_number>3:
+            print(Fore.RED+f"WTF THIS SHOULDN'T BE POSSIBLE - anyhow, enjoy the rest of your bugged game")
+            logging.debug(f"ROUND OUT OF BOUNDS")
         if self.round_number > 1:
             for player in self.players:
                 player.draw_hand(2)
@@ -204,7 +208,7 @@ class game(Env): # Env -> gym Environment
             print(Fore.WHITE)
 
     def render(self,players): # gym required method 
-        print(f"\nCurrent Score - {self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
+        print(f"\nCurrent Score - Round: {self.round_number} Turn Score:{self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
         print("\n------ Current Board ------")
         print("###############################################################################################################")
         for player in players:
