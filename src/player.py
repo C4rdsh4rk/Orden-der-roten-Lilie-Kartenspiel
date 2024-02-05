@@ -20,6 +20,7 @@ class Player(ABC):
         self.hand = [] # Add a hand attribute
         self.score_vector = []
         self.turn_score = 0
+        self.turn_number = 0
         self.passed = False
         self.rounds_won = 0
         self.rows = {
@@ -136,7 +137,7 @@ class Human(Player):
     def build_deck(self, booster):
         loop_flag = True
         auto_build_deck=get_user_input(
-            f"Do you want a random deck? 0 - No, 1 - Yes:",
+            f"Do you want a random deck? 0 - No, 1 - Yes: ",
             ["0", "1"]
             )
         while loop_flag:
@@ -173,7 +174,6 @@ class Human(Player):
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
 
-
 class ArtificialRetardation(Player):
     def __init__(self, name, idiot):
         super().__init__(name, idiot)
@@ -186,7 +186,12 @@ class ArtificialRetardation(Player):
         return random.choice(list(any_row_choice.values()))
     
     def make_pass_choice(self) -> bool:
-        return random.choice([False, True])
+        if len(self.hand)==0:
+            print(f"{self.name} passed due to no cards to play.")
+            self.passed = True
+        else:
+            self.passed = random.choices([False, True],[0.8,0.2],k=1)[0]
+        return self.passed
     
     def build_deck(self, booster):
         loop_flag = True

@@ -11,9 +11,9 @@ def main():
             print(f"Wrong input, try again")
             
     for episode in range(1, episodes+1):
-    state = env.reset()
-    done = False
-    score = 0 
+        state = env.reset()
+        done = False
+        score = 0 
         while not done:
             #env.render()
             action = env.action_space.sample()

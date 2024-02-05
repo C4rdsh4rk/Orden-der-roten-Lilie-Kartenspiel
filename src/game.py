@@ -14,6 +14,7 @@ class game(Env): # Env -> gym Environment
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         logging.debug(f"Game started - {time_stamp}")
+        self.done = False
         if training:
             self.players=self.initialize_players(training)
         else:
@@ -28,7 +29,7 @@ class game(Env): # Env -> gym Environment
         self.round_num=0
         if training:
             self.action_space = Discrete(50)
-            self.observation_space = {}
+            self.observation_space = {self.players[0].hand,self.players[0].deck,self.players[0].rows,self.players[1].rows}
         else:
             self.game_loop()# Start game loop
 
@@ -44,6 +45,7 @@ class game(Env): # Env -> gym Environment
             print("Draw - No one won the game")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
         logging.debug(f"Game ended - {time_stamp}")
+        return
     
     def reset_game(self):
         for player in self.players:
@@ -56,51 +58,75 @@ class game(Env): # Env -> gym Environment
             #self.__init__()# infinite game loop
             self.round_num=5
 
-    def reward_function(self):
-        for player in self.players:
-            if player.idiot == "pc":
-                player.reward+=player.turn_score
-                logging.debug(f"REWARD:{player.name} {player.reward}")
-        return
+    def close(self): # gym method
+        # Implement any necessary cleanup
+        raise NotImplementedError
+
+    def reset(self): # gym method
+        self.reset_game()
+        return True
+
+    def _get_info(self): # gym method
+        return {
+        }
+
+    def _get_obs(self): # gym method
+        return {
+        }
+
+    def reward_function(self,player):
+        if player.idiot == "nn":
+            player.reward+=player.turn_score + player.rounds_won*10
+            logging.debug(f"REWARD:{player.name} {player.reward}")
+        return player.reward
     
-    def step(self,ar_action):
-        return n_state, reward, done, info
+    def step(self,ar_action): # Training turn for gym
+        if ar_action == 'p':
+            self.players[0].passed = True
+        elif ar_action:
+            pass
+        self.play_turn(self.players[1])
+        info = {self.players[0].hand}
+        state = self.players[0].deck,self.players[0].rows,self.players[1].rows
+        return state, self.reward_function(self.players[0]), self.done, info
+    
+    def play_turn(self,player): # Normal turn
+
+        return
+
+    def draw_cards(self,player,num_cards=2):
+        player.draw_hand(num_cards)
+        return
 
     def play_round(self):
         print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
-        for player in self.players:
-            if self.round_num > 1:
+        if self.round_num > 1:
+            for player in self.players:
                 player.draw_hand(2)
                 player.passed = False
                 player.clear_rows()
-            else:
+                logging.debug(f"{player.name} drew 2 cards.")
+        else:
+            for player in self.players:
                 player.draw_hand(10,True)
-            logging.debug(f"{player.name} drew cards")
-        self.players[0].display_hand()
-        while(True):
+                logging.debug(f"{player.name} drew 10 cards.")
+        
+        while True:
             # Take turns playing cards
             for player in self.players:
-                # skip player if he has passed
-                if player.passed:
-                    continue
-                print(f"\n{player.name}'s Turn:")
-                player.play_card()
-                self.render(self.players)
-                if player.passed:
-                    print(f"{player.name} passed!")
-                    continue
-            self.render(self.players)
-            self.players[0].display_hand()
-            self.update_row_scores()
-            self.display_row_scores()
+                player.make_pass_choice()
+                if not player.passed:
+                    print(f"\n{player.name}'s Turn:")
+                    player.play_card()
+                    self.render(self.players)
+                    self.update_row_scores()
             # Display the current score
-            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score},{self.players[1].name}: {self.players[1].turn_score}")
-            if(self.players[0].passed and self.players[1].passed):
+            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
+            if self.players[0].passed and self.players[1].passed:
                 self.update_win_points()
                 break
         self.display_round_result()
-        return
 
     def display_round_result(self) -> None:
         winner = ""
@@ -195,9 +221,15 @@ class game(Env): # Env -> gym Environment
             if row == Row.EFFECTS:
                 continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
-                player1_score += 1
+                if self.players[0].get_row_sum(row)==0 and self.players[1].get_row_sum(row)==0:
+                    continue
+                else:
+                    player1_score += 1
             if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
-                player2_score += 1
+                if self.players[0].get_row_sum(row)==0 and self.players[1].get_row_sum(row)==0: # Probably not necessary twice
+                    continue
+                else:
+                    player2_score += 1
         self.players[0].turn_score = player1_score
         self.players[1].turn_score = player2_score
     
@@ -208,10 +240,15 @@ class game(Env): # Env -> gym Environment
         )
     
     def game_loop(self):
-        # Play three rounds
-        self.round_num=1
-        while(self.players[0].rounds_won<3 and self.players[1].rounds_won<3):
+      # Play three rounds
+        self.round_num = 1
+        for player in self.players:
+            self.draw_cards(player, 8)  # Draw first 8 hand cards (+ 2 in first round later)
+        
+        while not (self.players[0].rounds_won >= 2 or self.players[1].rounds_won >= 2):  # Using 'not' to check the condition and simplify the loop condition
+            for player in self.players:
+                self.draw_cards(player)  # Draw 2
             self.play_round()
-            self.round_num+=1
+            self.round_num += 1
         self.display_winner()
-        self.reset_game()
+        self.reset_game() 
