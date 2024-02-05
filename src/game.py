@@ -125,11 +125,9 @@ class game(Env): # Env -> gym Environment
         while True:
             # Take turns playing cards
             for player in self.players:
-                player.make_pass_choice()
-                if not player.passed:
-                    print(f"\n{player.name}'s Turn:")
-                    self.play_turn(player)
-                    self.render(self.players)
+                print(f"\n{player.name}'s Turn:")
+                self.play_turn(player)
+                self.render(self.players)
             # Display the current score
             print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
             if self.players[0].passed and self.players[1].passed:

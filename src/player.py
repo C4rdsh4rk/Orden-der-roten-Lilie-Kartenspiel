@@ -64,10 +64,9 @@ class Player(ABC):
             card_number+=1
     
     def play_card(self) -> None:
-        if self.make_pass_choice():
-            self.passed = True
+        if self.passed:
             return
-
+        
         valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
         chosen_card = self.make_card_choice(valid_choices)
         
@@ -144,7 +143,7 @@ class Human(Player):
             #clear_screen()
             print(f"{self.name} is building his deck")
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            if not auto_build_deck:
+            if not bool(int(auto_build_deck)):
                 print("Choose cards for your deck")
                 print("Available Cards:\n" + Fore.WHITE)
                 print(f"{'+----------+ '*len(booster_pack)}")
