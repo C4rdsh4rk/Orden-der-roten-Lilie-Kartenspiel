@@ -15,14 +15,14 @@ any_row_choice = {
 class Player(ABC):
     def __init__(self, name, idiot):
         self.name = name
-        self.idiot = idiot
-        self.deck = []
-        self.hand = [] # Add a hand attribute
-        self.score_vector = []
+        self.idiot = idiot # Human, PC or NN
+        self.deck = [] # Deck of cards
+        self.hand = [] # Hand cards attribute
         self.turn_score = 0
         self.turn_number = 0
         self.passed = False
         self.rounds_won = 0
+        self.row_score = {}
         self.rows = {
             Row.FRONT: [],
             Row.WISE: [],
@@ -69,16 +69,16 @@ class Player(ABC):
             return
 
         valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
-        choosen_card = self.make_card_choice(valid_choices)
+        chosen_card = self.make_card_choice(valid_choices)
         
-        row = choosen_card.type
+        row = chosen_card.type
         if row == Row.ANY:
-            row = self.make_row_choice(choosen_card)
+            row = self.make_row_choice(chosen_card)
         # add card to row to play it and remove it from the hand
-        self.rows[row].append(choosen_card)
-        card_index = self.hand.index(choosen_card)
+        self.rows[row].append(chosen_card)
+        card_index = self.hand.index(chosen_card)
         self.hand = self.hand[:card_index] + self.hand[card_index+1:]
-        print(f"{self.name}: Played {choosen_card.name} with strength {choosen_card.strength} in {choosen_card.type}.")
+        print(f"{self.name}: Played {chosen_card.name} with strength {chosen_card.strength} in {chosen_card.type}.")
     
     def make_pass_choice(self) -> bool:
         """

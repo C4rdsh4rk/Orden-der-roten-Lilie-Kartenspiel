@@ -26,7 +26,7 @@ class game(Env): # Env -> gym Environment
         # Display the decks
         for player in self.players:
             player.display_deck()
-        self.round_num=0
+        self.round_number=0
         if training:
             self.action_space = Discrete(50)
             self.observation_space = {self.players[0].hand,self.players[0].deck,self.players[0].rows,self.players[1].rows}
@@ -51,12 +51,11 @@ class game(Env): # Env -> gym Environment
         for player in self.players:
             player.deck = []
             player.hand = []
-            player.score_vector = []
             player.passed = False
             player.rounds_won = 0
             player.clear_rows()
             #self.__init__()# infinite game loop
-            self.round_num=5
+            self.round_number=5
 
     def close(self): # gym method
         # Implement any necessary cleanup
@@ -81,17 +80,29 @@ class game(Env): # Env -> gym Environment
         return player.reward
     
     def step(self,ar_action): # Training turn for gym
-        if ar_action == 'p':
-            self.players[0].passed = True
-        elif ar_action:
-            pass
+        logging.debug(f"AR action: {ar_action}")
+        self.play_turn(self.players[0],ar_action)
         self.play_turn(self.players[1])
-        info = {self.players[0].hand}
-        state = self.players[0].deck,self.players[0].rows,self.players[1].rows
+        info = {self.players[0].hand,self.players[0].deck,self.players[0].rows,self.players[1].rows, self.players[0].turn_number, self.round_number} # Board, hand and round number are info for network
+        state = {self.players[0].row_score,self.players[0].rounds_won, self.players[1].row_score,self.players[1].rounds_won,self.players[0].passed, self.players[1].passed} # Row and winning score are relevant state
+        logging.debug(f"{info},{state}")
+        if self.done:
+            self.display_winner()
         return state, self.reward_function(self.players[0]), self.done, info
     
-    def play_turn(self,player): # Normal turn
-
+    def play_turn(self,player,ar_action=None): # Normal turn
+        if not ar_action==None:
+            if ar_action == 'p':
+                player.passed = True
+            elif ar_action:
+                player.play_card()
+        else:
+            player.make_pass_choice()
+        if not player.passed:
+            print(f"\n{player.name}'s Turn:")
+            player.play_card()
+            self.render(self.players)
+            self.update_row_scores()
         return
 
     def draw_cards(self,player,num_cards=2):
@@ -99,9 +110,8 @@ class game(Env): # Env -> gym Environment
         return
 
     def play_round(self):
-        print(f"\n--- Round {self.round_num} ---")
         # Draw hands for each player in the second and third rounds
-        if self.round_num > 1:
+        if self.round_number > 1:
             for player in self.players:
                 player.draw_hand(2)
                 player.passed = False
@@ -111,22 +121,24 @@ class game(Env): # Env -> gym Environment
             for player in self.players:
                 player.draw_hand(10,True)
                 logging.debug(f"{player.name} drew 10 cards.")
-        
+
         while True:
             # Take turns playing cards
             for player in self.players:
                 player.make_pass_choice()
                 if not player.passed:
                     print(f"\n{player.name}'s Turn:")
-                    player.play_card()
+                    self.play_turn(player)
                     self.render(self.players)
-                    self.update_row_scores()
             # Display the current score
             print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
             if self.players[0].passed and self.players[1].passed:
                 self.update_win_points()
                 break
+
+        self.round_number += 1
         self.display_round_result()
+        self.done = (self.players[0].rounds_won >= 2 or self.players[1].rounds_won >= 2)
 
     def display_round_result(self) -> None:
         winner = ""
@@ -137,7 +149,7 @@ class game(Env): # Env -> gym Environment
         else:
             print("The round was a draw, one point to both players!")
         if winner:
-            print(f"\n--- Player {winner} won round {self.round_num} ---")
+            print(f"\n--- Player {winner} won round {self.round_number} ---")
         print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
 
     def initialize_players(self,training=False):
@@ -218,6 +230,8 @@ class game(Env): # Env -> gym Environment
         player1_score = 0
         player2_score = 0
         for row in self.players[0].rows:
+            self.players[0].row_score[row] = self.players[0].get_row_sum(row)
+            self.players[1].row_score[row] = self.players[1].get_row_sum(row)
             if row == Row.EFFECTS:
                 continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
@@ -230,8 +244,8 @@ class game(Env): # Env -> gym Environment
                     continue
                 else:
                     player2_score += 1
-        self.players[0].turn_score = player1_score
-        self.players[1].turn_score = player2_score
+        self.players[0].turn_score = player1_score # How many rows are won by this player at the time the function is called
+        self.players[1].turn_score = player2_score # How many rows are won by this player at the time the function is called
     
     def display_row_scores(self):
         logging.debug(
@@ -241,14 +255,11 @@ class game(Env): # Env -> gym Environment
     
     def game_loop(self):
       # Play three rounds
-        self.round_num = 1
+        self.round_number = 1
         for player in self.players:
             self.draw_cards(player, 8)  # Draw first 8 hand cards (+ 2 in first round later)
         
-        while not (self.players[0].rounds_won >= 2 or self.players[1].rounds_won >= 2):  # Using 'not' to check the condition and simplify the loop condition
-            for player in self.players:
-                self.draw_cards(player)  # Draw 2
+        while not self.done:  # Using 'not' to check the condition and simplify the loop condition
             self.play_round()
-            self.round_num += 1
         self.display_winner()
         self.reset_game() 
