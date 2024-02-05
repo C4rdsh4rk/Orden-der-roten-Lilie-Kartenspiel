@@ -179,9 +179,9 @@ class CardTable:
         while key not in choices:
             while True:
                 add = getchlib.getkey()#Prompt.ask(prompt=prompt, choices=choices, console=self.layout["prompt_view"])
-                if add == "\x7f":  # this is the delete button
+                if add == "\x7f" or add == "\x08":  # this is the delete button
                     key = key[:-1]
-                elif add == "\n":
+                elif add == "\n" or add == "\r":
                     break
                 else:
                     key += add
