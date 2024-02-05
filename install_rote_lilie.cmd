@@ -65,37 +65,43 @@ if /i "%arch%"=="AMD64" (
 ::Python
 set PYTHON_VERSION=3.12.1
 :: Create the extraction folder
-set EXTRACT_PATH=.\src\
+mkdir \src\Python
+set EXTRACT_PATH=.\src\Python
 
 :: Download the embedded Python zip file
 echo Downloading Python %PYTHON_VERSION%...
-powershell -command "Invoke-WebRequest '%DOWNLOAD_URL%' -OutFile '%EXTRACT_PATH%\python-embed.zip' "
+powershell -command "Invoke-WebRequest '%DOWNLOAD_URL%' -OutFile '\src\python-embed.zip' "
 
 :: Extract the contents of the zip file
-powershell -command "Expand-Archive -Path '%EXTRACT_PATH%\python-embed.zip' -DestinationPath '%EXTRACT_PATH%'"
+powershell -command "Expand-Archive -Path '\src\python-embed.zip' -DestinationPath '%EXTRACT_PATH%'"
 
 echo Embedded Python Download Complete!
 
-set PYTHON=\src\python.exe
+set PYTHON=\src\Python\python.exe
 
 :: getPIP
 powershell -command "cd .\src\; curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py"
 echo getPIP Download Complete!
 
 ::installPIP
-.\src\python.exe .\src\get-pip.py
+.\src\Python\python.exe .\src\get-pip.py
     echo getPIP Installed!
 ::powershell -command "cd .\src\;python.exe get-pip.py"
 
 :: REQ
-powershell -command "cd .\src\Scripts;pip.exe freeze > ..\requirements.txt"
-powershell -command "cd .\src\Scripts; pip.exe install -r ..\requirements.txt"
+powershell -command "cd .\src\Python\Scripts; pip.exe freeze > ..\requirements.txt"
+powershell -command "cd .\src\Python\Scripts; pip.exe install -r ..\requirements.txt"
 echo Requirements Install Complete!
+
+:: Clean UP
+::powershell -command "cd .\src\Python\; Remove-item python312.zip; Remove-item python-embed.zip; Remove-item get-pip.py"
+::echo Installation cleaned up!
 
 :: LOG Folder
 ::mkdir logs
 ::echo Logs Folder Created!
-echo Setup Complete! GLHF!
+echo Setup Complete!
+echo GLHF!
 
 :End
 pause

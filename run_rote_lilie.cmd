@@ -1,6 +1,6 @@
 echo off
 echo
-
+color 04
 echo		                             ++.                            
 echo		                           .####.                           
 echo		                          .######.                          
