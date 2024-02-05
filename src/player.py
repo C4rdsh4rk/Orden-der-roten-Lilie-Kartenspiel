@@ -14,6 +14,7 @@ any_row_choice = {
 
 class Player(ABC):
     def __init__(self, name, idiot):
+        self.total_cards = 0
         self.name = name
         self.idiot = idiot
         self.deck = []
@@ -22,6 +23,7 @@ class Player(ABC):
         self.turn_score = 0
         self.passed = False
         self.rounds_won = 0
+        self.last_move = "No move"
         self.rows = {
             Row.FRONT: [],
             Row.WISE: [],
@@ -62,30 +64,31 @@ class Player(ABC):
             print(f"[{card_number}]{card.name} ({card.strength})", end="")
             card_number+=1
     
-    def play_card(self) -> None:
-        if self.make_pass_choice():
+    def play_card(self, display) -> None:
+        if self.make_pass_choice(display):
             self.passed = True
+            self.last_move = "Passed"
             return
 
         valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
-        choosen_card = self.make_card_choice(valid_choices)
+        chosen_card = self.make_card_choice(valid_choices, display)
         
-        row = choosen_card.type
+        row = chosen_card.type
         if row == Row.ANY:
-            row = self.make_row_choice(choosen_card)
+            row = self.make_row_choice(chosen_card, display)
         # add card to row to play it and remove it from the hand
-        self.rows[row].append(choosen_card)
-        card_index = self.hand.index(choosen_card)
+        self.rows[row].append(chosen_card)
+        card_index = self.hand.index(chosen_card)
         self.hand = self.hand[:card_index] + self.hand[card_index+1:]
-        print(f"{self.name}: Played {choosen_card.name} with strength {choosen_card.strength} in {choosen_card.type}.")
+        self.last_move = f"{chosen_card.name}->{row.value}"
     
-    def make_pass_choice(self) -> bool:
+    def make_pass_choice(self, display) -> bool:
         """
         Function that determines if the player passes
         """
         raise NotImplementedError
 
-    def make_card_choice(self, valid_choices: list) -> Card:
+    def make_card_choice(self, valid_choices: list, display) -> Card:
         """
         Interface function that must return exactly one card that is played by the player.
         The card must be in the valid_choices.
@@ -97,7 +100,7 @@ class Player(ABC):
             Card: Card that is played"""
         raise NotImplementedError
     
-    def make_row_choice(self, card: Card) -> Row:
+    def make_row_choice(self, card: Card, display) -> Row:
         """
         Interface function that must return exactly one row where the given card should be played in.
 
@@ -110,28 +113,23 @@ class Player(ABC):
         raise NotImplementedError
 
 class Human(Player):
-    def make_card_choice(self, valid_choices):
+    def make_card_choice(self, valid_choices, display):
         valid_choices = [str(int(x)+1) for x in valid_choices] # User friendly numbers
-        self.display_hand()
-        return self.hand[int(get_user_input(
-            "Choose a card from your hand:",
+        return self.hand[int(display.ask_prompt(
+            f"Choose a card from your hand [{valid_choices[0]}-{valid_choices[-1]}]:",
             valid_choices
         ))-1]
     
-    def make_row_choice(self, card) -> Row:
+    def make_row_choice(self, card, display) -> Row:
         return any_row_choice[
-            int(get_user_input(
-                "Chose any row for your card",
+            int(display.ask_prompt(
+                "Chose any row for your card [1, 2, 3]",
                 [str(row_number) for row_number in any_row_choice.keys()]
             ))
         ]
     
-    def make_pass_choice(self) -> bool:
-        return bool(int(get_user_input(
-            "Pass? 0 - No, 1 - Yes: ",
-            ["0", "1"]
-        )))
-    
+    def make_pass_choice(self, display) -> bool:
+        return bool(int(display.ask_prompt("Pass? 0 - No, 1 - Yes: ", ["0", "1"])))
     
     def build_deck(self, booster):
         loop_flag = True
@@ -167,6 +165,7 @@ class Human(Player):
             if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
                 self.deck.append(chosen_card)
             elif sum(card.strength for card in self.deck) == 38:
+                self.total_cards = len(self.deck)
                 break
             else:
                 print("Value exceeds maximum deck strength, try again. (not your fault)")
@@ -179,13 +178,13 @@ class ArtificialRetardation(Player):
         super().__init__(name, idiot)
         self.reward = 0
 
-    def make_card_choice(self, valid_choices):
+    def make_card_choice(self, valid_choices, display):
         return self.hand[int(random.choice(valid_choices))-1]
     
-    def make_row_choice(self, card) -> Row:
+    def make_row_choice(self, card, display) -> Row:
         return random.choice(list(any_row_choice.values()))
     
-    def make_pass_choice(self) -> bool:
+    def make_pass_choice(self, display) -> bool:
         return random.choice([False, True])
     
     def build_deck(self, booster):
@@ -200,6 +199,7 @@ class ArtificialRetardation(Player):
             if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
                 self.deck.append(chosen_card)
             elif sum(card.strength for card in self.deck) == 38:
+                self.total_cards = len(self.deck)
                 break
             else:
                 #print("Value exceeds maximum deck strength, try again. (not your fault)")

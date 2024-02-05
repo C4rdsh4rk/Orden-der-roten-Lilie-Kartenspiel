@@ -3,7 +3,7 @@ import os
 
 def get_user_input(prompt, valid_choices):
     while True:
-        user_input = input(prompt)
+        user_input = "1"#input(prompt)
         if user_input in valid_choices:
             return user_input
         else:
