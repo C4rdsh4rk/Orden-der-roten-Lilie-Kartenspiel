@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.optimizers import Adam
+import tensorflow.keras as keras
 import numpy as np
 from rl.agents import DQNAgent
 from rl.policy import BoltzmannQPolicy
@@ -10,7 +11,7 @@ from rl.memory import SequentialMemory
 
 def build_model(env):
     model = Sequential()    
-    model.add(Dense(24, activation='relu', input_shape=env.observation_space.shape))
+    model.add(Dense(24, activation='relu', input_shape=(234,)))
     model.add(Dense(24, activation='relu'))
     model.add(Dense(env.action_space.n, activation='linear'))
     return model
@@ -51,7 +52,7 @@ def main():
     NN_architecture.summary()
     
     neural_nutjob = build_agent(NN_architecture, env.action_space.n)
-    neural_nutjob.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['accuracy'])
+    neural_nutjob.compile(optimizer=Adam(learning_rate=0.001), metrics=[keras.metrics.Accuracy()])
     neural_nutjob.fit(env, nb_steps=50000, visualize=False, verbose=1)
     _ = neural_nutjob.test(env, nb_episodes=15, visualize=True)
     neural_nutjob.save_weights('dqn_weights.h5f', overwrite=True)

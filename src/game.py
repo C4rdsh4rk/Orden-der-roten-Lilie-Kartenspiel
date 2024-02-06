@@ -30,7 +30,7 @@ class game(Env): # Env -> gym Environment
             self.action_space = Discrete(39)
             for player in self.players:
                 player.draw_hand(10,True)
-            self.observation_space = self.get_state() # Box(low=0, high=38, shape=(117, 3), dtype=np.uint8) # 38 max hand cards + 76 max board cards +2 turn scores + 1 win points  
+            self.observation_space =  Box(low=0, high=38, shape=(234,), dtype=np.uint8) # self.get_state() #38 max hand cards + 76 max board cards +2 turn scores + 1 win points  
         else:
             self.game_loop()# Start game loop
 
@@ -64,14 +64,15 @@ class game(Env): # Env -> gym Environment
         return player1, player2
     
     def reset_game(self):
-        for player in self.players:
-            player.deck = []
-            player.hand = []
-            player.passed = False
-            player.rounds_won = 0
-            player.clear_rows()
+        pass
+        #for player in self.players:
+            #player.deck = []
+            #player.hand = []
+            #player.passed = False
+            #player.rounds_won = 0
+            #player.clear_rows()
             #self.__init__()# infinite game loop
-            self.round_number=5
+            #self.round_number=5
 
     def close(self): # gym method
         # Implement any necessary cleanup
@@ -96,8 +97,8 @@ class game(Env): # Env -> gym Environment
             hand_vector[i] = self.players[0].hand[i].get_card_vector()
 
         board_vector = self.players[0].get_board() + self.players[1].get_board()  
-        logging.debug(f"Board: {board_vector}")
-        logging.debug(f"Hand: {hand_vector}")
+        #logging.debug(f"Board: {board_vector}")
+        #logging.debug(f"Hand: {hand_vector}")
 
         self.update_row_scores()
         score_vector = np.zeros(6)
@@ -118,7 +119,7 @@ class game(Env): # Env -> gym Environment
             player.reward+=player.turn_score + player.rounds_won*10
             logging.debug(f"REWARD:{player.name} {player.reward}")
         return player.reward
-    
+
     def step(self,ar_action): # Training turn for gym
         self.play_turn(self.players[0],ar_action)
         self.play_turn(self.players[1])
@@ -145,6 +146,7 @@ class game(Env): # Env -> gym Environment
         if len(player.hand)==0:
             player.passed = True
             logging.debug(f"{player.name} has no cards left and PASSED")
+            print(f"{player.name} has no cards left and passed!")
         if not ar_action==None and not player.passed:
             logging.debug(f"AR_case")
             if ar_action == 39: # max Deck length + passing option
