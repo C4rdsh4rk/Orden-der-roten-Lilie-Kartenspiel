@@ -62,20 +62,6 @@ class game(Env): # Env -> gym Environment
         player2.draw_hand(10,True)
         logging.debug(f"Players drew 10 cards from their shuffled deck.")
         return player1, player2
-
-    def display_winner(self):
-        winner = ""
-        if self.players[0].rounds_won < self.players[1].rounds_won:
-            winner = self.players[1].name
-        elif self.players[0].rounds_won > self.players[1].rounds_won:
-            winner = self.players[0].name
-        if winner:
-            print(f"{winner} won the game!")
-        else:
-            print("Draw - No one won the game")
-        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
-        logging.debug(f"Game ended - {time_stamp}")
-        return
     
     def reset_game(self):
         for player in self.players:
@@ -149,6 +135,7 @@ class game(Env): # Env -> gym Environment
         return self.get_state(), self.reward_function(self.players[0]), self.done, info
     
     def play_turn(self,player,ar_action=None): # Normal turn
+        print(f"\n{player.name}'s Turn:")
         player.turn_number+=1
         logging.debug(f"\nROUND: {self.round_number}")
         logging.debug(f"{player.name}'s hand: {len(player.hand)}")
@@ -170,7 +157,8 @@ class game(Env): # Env -> gym Environment
             player.make_pass_choice()
             if player.passed:
                 logging.debug(f"{player.name} passed")
-            print(f"\n{player.name}'s Turn:")
+                print(f"{player.name} passed")
+            
             played_card = player.play_card()
             logging.debug(f"{player.name} played card: {played_card}")
             self.render(self.players)
@@ -304,6 +292,22 @@ class game(Env): # Env -> gym Environment
             f"{self.players[1].name}'s wins {self.players[1].turn_score} rows"
         )
     
+
+    def display_winner(self):
+        winner = ""
+        if self.players[0].rounds_won < self.players[1].rounds_won:
+            winner = self.players[1].name
+        elif self.players[0].rounds_won > self.players[1].rounds_won:
+            winner = self.players[0].name
+        if winner:
+            print(f"{winner} won the game!")
+        else:
+            print("Draw - No one won the game")
+        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
+        logging.debug(f"{winner} won the game!")
+        logging.debug(f"\nGame ended - {time_stamp}")
+        return
+
     def game_loop(self):
       # Play three rounds
         self.round_number = 1       
