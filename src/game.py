@@ -11,8 +11,8 @@ from src.cards import CardName
 import numpy as np
 
 class game(Env): # Env -> gym Environment
-    def __init__(self, training=False):
-        super().__init__()
+    def __init__(self, training=True):
+        super(game, self).__init__()
         self.setup_logging()
         self.done = False
         self.players = self.initialize_game(training)
@@ -80,21 +80,22 @@ class game(Env): # Env -> gym Environment
             player.rounds_won = 0
             player.clear_rows()
             #self.__init__()# infinite game loop
-            self.round_number=5
+            self.round_number=1
+        return self.get_state()
 
     def close(self): # gym method
         # Implement any necessary cleanup
         raise NotImplementedError
 
     def reset(self): # gym wrapper method
-        self.reset_game()
-        return True
+        return self.reset_game()
 
     def _get_info(self): # gym method
         raise NotImplementedError
 
     def _get_obs(self): # gym method
-        raise NotImplementedError
+        info = {}
+        return self.get_state(), self.reward_function(self.players[0]), self.done, info
     
     def get_ar_action_meaning(self, ar_action):
         raise NotImplementedError
@@ -117,10 +118,10 @@ class game(Env): # Env -> gym Environment
             score_vector[i] = int(self.players[0].row_score[row])
             score_vector[i+1] = int(self.players[1].row_score[row])
             i+=2
-        state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector])
-        logging.debug(f"State:{state.shape}")
+        self.state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector])
+        logging.debug(f"State:{self.state}")
         # Flatten the row scores and card hands into one long vector
-        return state
+        return self.state
 
     def reward_function(self,player):
         if player.idiot == "nn":
@@ -302,7 +303,6 @@ class game(Env): # Env -> gym Environment
             f"{self.players[1].name}'s wins {self.players[1].turn_score} rows"
         )
     
-
     def display_winner(self):
         winner = ""
         if self.players[0].rounds_won < self.players[1].rounds_won:

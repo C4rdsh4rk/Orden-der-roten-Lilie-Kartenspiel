@@ -31,16 +31,17 @@ def main():
         if isinstance(episodes,int) and episodes>0:
             break
         else:
-            print(f"Wrong input, try again")   
+            print(f"Wrong input, try again")
+    
     for episode in range(1, episodes+1):
         done = False
         score = 0 
         while not done:
             #env.render()
             action = env.action_space.sample()
-            n_state, reward, done, info = env.step(action)
-        print('Episode:{} Score:{}'.format(episode, reward))
-
+            observation, reward, done, info = env.step(action)
+        print(f"Episode:{episode} Score:{reward}")
+        observation = env.reset()
     NN_architecture = build_model(env)
     NN_architecture.summary()
     
@@ -48,8 +49,10 @@ def main():
     print(f"Agent build")
     neural_nutjob.compile(optimizer=Adam(learning_rate=0.001), metrics=[keras.metrics.Accuracy()])
     print(f"Model compiled")
+    print(f"{env.observation_space.shape}")
+    print(f"Starting fitting...")
     neural_nutjob.fit(env, nb_steps=10, visualize=False, verbose=1)
-    print(f"Started fit")
+    print(f"Finished fitting...")
     _ = neural_nutjob.test(env, nb_episodes=2, visualize=True)
     print(f"Finished test and saving weights!")
     neural_nutjob.save_weights('dqn_weights.h5f', overwrite=True)
