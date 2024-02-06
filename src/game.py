@@ -13,57 +13,65 @@ import numpy as np
 class game(Env): # Env -> gym Environment
     def __init__(self, training=False):
         super().__init__()
-        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
-        time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
+        self.setup_logging()
         self.done = False
+        self.players = self.initialize_game(training)
+        self.display_decks()
         if training:
-            logging.debug(f"Training started - {time_stamp}")
-            self.players=self.initialize_game(training)
+            self.setup_training_environment()
         else:
-            logging.debug(f"Game started - {time_stamp}")
-            self.players=self.initialize_game()
-        # Display the decks
-        for player in self.players:
-            player.display_deck()
-        if training:           
-            self.action_space = Discrete(39)
-            for player in self.players:
-                player.draw_hand(10,True)
-            self.observation_space =  Box(low=0, high=38, shape=(234,), dtype=np.uint8) # self.get_state() #38 max hand cards + 76 max board cards +2 turn scores + 1 win points  
-        else:
-            self.game_loop()# Start game loop
+            self.game_loop()
+    
+    def setup_logging(self):
+        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
+        logging.basicConfig(level=logging.DEBUG, filename='logs/' + str(time_stamp) + '.log', filemode='w', format='%(message)s')
+        self.log_time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
 
-    def initialize_game(self,training=False):
-        utils.clear_screen()
-        self.round_number=1
-        if not training:
-            while True:
+    def initialize_game(self, training):
+            utils.clear_screen()
+            self.round_number = 1
+            players = self.get_players(training)
+            self.initialize_decks(players)
+            return players
+    
+    def get_players(self, training):
+            if training:
+                logging.debug(f"Training started - {self.log_time_stamp}")
+                return [ArtificialRetardation("Neural Nutjob", "nn"), ArtificialRetardation("Trained Monkey", "pc")]
+            else:
+                logging.debug(f"Game started - {self.log_time_stamp}")
                 choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
                 if choice == '1':
                     name = input("Enter your name: ").lower()
-                    player1 = Human(name, "human")
-                    player2 = ArtificialRetardation("Trained Monkey", "pc")
-                    break
+                    return [Human(name, "human"), ArtificialRetardation("Trained Monkey", "pc")]
                 else:
-                    player1 = ArtificialRetardation("Trained Monkey", "pc")
-                    player2 = ArtificialRetardation("Clueless Robot", "pc")
-                    break
-        else:
-            logging.debug(f"NN Player activated")
-            player1 = ArtificialRetardation("Neural Nutjob", "nn")
-            player2 = ArtificialRetardation("Trained Monkey", "pc")
-        
-        # Build decks for each player
+                    return [ArtificialRetardation("Trained Monkey", "pc"), ArtificialRetardation("Clueless Robot", "pc")]
+
+    def initialize_decks(self, players):
         booster_instance = Booster()
-        player1.build_deck(booster_instance)
-        player2.build_deck(booster_instance)
-        
-        player1.draw_hand(10,True)
-        player2.draw_hand(10,True)
+        for player in players:
+            player.build_deck(booster_instance)
+            player.draw_hand(10, True)
         logging.debug(f"Players drew 10 cards from their shuffled deck.")
-        return player1, player2
-    
+
+    def display_decks(self):
+        for player in self.players:
+            player.display_deck()
+
+    def setup_training_environment(self):
+        self.action_space = Discrete(39)
+        for player in self.players:
+            player.draw_hand(10, True)
+        self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.uint8)
+
+    def game_loop(self):
+        # Play three rounds
+        self.round_number = 1
+        while not self.done:
+            self.play_round()
+        self.display_winner()
+        self.reset_game()
+
     def reset_game(self):
         for player in self.players:
             player.deck = []
@@ -310,6 +318,72 @@ class game(Env): # Env -> gym Environment
         logging.debug(f"\nGame ended - {time_stamp}")
         return
 
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+    def __init__(self, training=False):
+        super().__init__()
+        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
+        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
+        self.done = False
+        if training:
+            logging.debug(f"Training started - {time_stamp}")
+            self.players=self.initialize_game(training)
+        else:
+            logging.debug(f"Game started - {time_stamp}")
+            self.players=self.initialize_game()
+        # Display the decks
+        for player in self.players:
+            player.display_deck()
+        if training:           
+            self.action_space = Discrete(39)
+            for player in self.players:
+                player.draw_hand(10,True)
+            self.observation_space =  Box(low=0, high=38, shape=(234,), dtype=np.uint8) # self.get_state() #38 max hand cards + 76 max board cards +2 turn scores + 1 win points  
+        else:
+            self.game_loop()# Start game loop
+
+    def initialize_game(self,training=False):
+        utils.clear_screen()
+        self.round_number=1
+        if not training:
+            while True:
+                choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
+                if choice == '1':
+                    name = input("Enter your name: ").lower()
+                    player1 = Human(name, "human")
+                    player2 = ArtificialRetardation("Trained Monkey", "pc")
+                    break
+                else:
+                    player1 = ArtificialRetardation("Trained Monkey", "pc")
+                    player2 = ArtificialRetardation("Clueless Robot", "pc")
+                    break
+        else:
+            logging.debug(f"NN Player activated")
+            player1 = ArtificialRetardation("Neural Nutjob", "nn")
+            player2 = ArtificialRetardation("Trained Monkey", "pc")
+        
+        # Build decks for each player
+        booster_instance = Booster()
+        player1.build_deck(booster_instance)
+        player2.build_deck(booster_instance)
+        
+        player1.draw_hand(10,True)
+        player2.draw_hand(10,True)
+        logging.debug(f"Players drew 10 cards from their shuffled deck.")
+        return player1, player2
+
     def game_loop(self):
       # Play three rounds
         self.round_number = 1       
@@ -317,3 +391,4 @@ class game(Env): # Env -> gym Environment
             self.play_round()
         self.display_winner()
         self.reset_game() 
+'''
