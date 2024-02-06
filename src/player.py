@@ -69,7 +69,7 @@ class Player(ABC):
             card_number+=1
     
     def play_card(self, display) -> None:
-        if self.make_pass_choice(display):
+        if not self.hand or self.make_pass_choice(display):
             self.passed = True
             self.last_move = "Passed"
             return
