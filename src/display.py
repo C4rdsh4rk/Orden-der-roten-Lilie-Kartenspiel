@@ -216,7 +216,7 @@ class CardTable:
             hand_table.add_column("Card", justify="left", ratio=1)
             hand_table.add_column("Str")
             for i, card in enumerate(cards):
-                padding = " " if i<10 else ""
+                padding = " " if i<9 else ""
                 card_name = Text(f"[{i+1}]{padding}{card.name}")
                 card_name.stylize(f"bold {card.color}")
 
