@@ -10,9 +10,11 @@ from src.cards import Booster
 from src.cards import CardName
 import numpy as np
 
-class game(Env): # Env -> gym Environment
-    def __init__(self, training=True):
-        super(game, self).__init__()
+class Game(Env): # Env -> gym Environment
+    def __init__(self, training=False):
+        super().__init__()
+        self.round_number=0
+        self.training = training
         self.setup_logging()
         self.done = False
         self.players = self.initialize_game(training)
@@ -21,7 +23,7 @@ class game(Env): # Env -> gym Environment
             self.setup_training_environment()
         else:
             self.game_loop()
-    
+
     def setup_logging(self):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/' + str(time_stamp) + '.log', filemode='w', format='%(message)s')
@@ -47,24 +49,26 @@ class game(Env): # Env -> gym Environment
                 else:
                     return [ArtificialRetardation("Trained Monkey", "pc"), ArtificialRetardation("Clueless Robot", "pc")]
 
-    def initialize_decks(self, players):
+    def initialize_decks(self, players) -> None:
         booster_instance = Booster()
         for player in players:
             player.build_deck(booster_instance)
             player.draw_hand(10, True)
-        logging.debug(f"Players drew 10 cards from their shuffled deck.")
+        logging.debug("Players drew 10 cards from their shuffled deck.")
 
-    def display_decks(self):
+    def display_decks(self) -> None:  
         for player in self.players:
-            player.display_deck()
+            logging.debug(player.deck)
+            if not self.training:
+                player.display_deck()
 
-    def setup_training_environment(self):
+    def setup_training_environment(self) -> None:
         self.action_space = Discrete(39)
         for player in self.players:
             player.draw_hand(10, True)
-        self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.uint8)
+        self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.float64)
 
-    def game_loop(self):
+    def game_loop(self) -> None:
         # Play three rounds
         self.round_number = 1
         while not self.done:
@@ -74,10 +78,13 @@ class game(Env): # Env -> gym Environment
 
     def reset_game(self):
         for player in self.players:
-            player.deck = []
-            player.hand = []
+            player.deck = [] # Deck of cards
+            player.hand = [] # Hand cards attribute
+            player.turn_score = 0
+            player.turn_number = 0
             player.passed = False
             player.rounds_won = 0
+            player.row_score = {}
             player.clear_rows()
             #self.__init__()# infinite game loop
             self.round_number=1
@@ -87,8 +94,8 @@ class game(Env): # Env -> gym Environment
         # Implement any necessary cleanup
         raise NotImplementedError
 
-    def reset(self): # gym wrapper method
-        return self.reset_game()
+    def reset(self,seed=None): # gym wrapper method
+        return self.reset_game(),{}
 
     def _get_info(self): # gym method
         raise NotImplementedError
@@ -129,7 +136,7 @@ class game(Env): # Env -> gym Environment
             logging.debug(f"REWARD:{player.name} {player.reward}")
         return player.reward
 
-    def step(self,ar_action): # Training turn for gym
+    def step(self, ar_action): # Training turn for gym
         self.play_turn(self.players[0],ar_action)
         self.play_turn(self.players[1])
         if self.players[0].passed and self.players[1].passed:
@@ -142,11 +149,11 @@ class game(Env): # Env -> gym Environment
         info = {} 
         if self.done:
             self.display_winner()
-        return self.get_state(), self.reward_function(self.players[0]), self.done, info
+        return self.get_state(), self.reward_function(self.players[0]), self.done, self.done, info
     
     def play_turn(self,player,ar_action=None): # Normal turn
         player.turn_number+=1
-        print(f"\n{player.name}'s Turn:")
+        logging.debug(f"\n{player.name}'s Turn:")
         logging.debug(f"\nROUND: {self.round_number}")
         logging.debug(f"{player.name}'s hand: {len(player.hand)}")
         logging.debug(f"{player.name}'s turn: {player.turn_number}")
@@ -155,7 +162,7 @@ class game(Env): # Env -> gym Environment
         if len(player.hand)==0:
             player.passed = True
             logging.debug(f"{player.name} has no cards left and PASSED")
-            print(f"{player.name} has no cards left and passed!")
+            logging.debug(f"{player.name} has no cards left and passed!")
         if not ar_action==None and not player.passed:
             logging.debug(f"AR_case")
             if ar_action == 39: # max Deck length + passing option
@@ -168,7 +175,7 @@ class game(Env): # Env -> gym Environment
             player.make_pass_choice()
             if player.passed:
                 logging.debug(f"{player.name} passed")
-                print(f"{player.name} passed")
+                logging.debug(f"{player.name} passed")
             
             played_card = player.play_card()
             logging.debug(f"{player.name} played card: {played_card}")
@@ -183,7 +190,7 @@ class game(Env): # Env -> gym Environment
     def play_round(self):
         # Draw hands for each player in the second and third rounds
         if self.round_number>3:
-            print(Fore.RED+f"WTF THIS SHOULDN'T BE POSSIBLE - anyhow, enjoy the rest of your bugged game")
+            logging.debug(Fore.RED+f"WTF THIS SHOULDN'T BE POSSIBLE - anyhow, enjoy the rest of your bugged game")
             logging.debug(f"ROUND OUT OF BOUNDS")
         if self.round_number > 1:
             for player in self.players:
@@ -197,7 +204,7 @@ class game(Env): # Env -> gym Environment
                 self.play_turn(player)
                 #self.render(self.players)
             # Display the current score
-            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
+            logging.debug(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
             if self.players[0].passed and self.players[1].passed:
                 self.update_win_points()
                 break
@@ -213,10 +220,12 @@ class game(Env): # Env -> gym Environment
         elif self.players[0].turn_score < self.players[1].turn_score:
             winner = self.players[1].name
         else:
-            print("The round was a draw, one point to both players!")
+            pass
+            logging.debug("The round was a draw, one point to both players!")
         if winner:
-            print(f"\n--- Player {winner} won round {self.round_number} ---")
-        print(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
+            pass
+            logging.debug(f"\n--- Player {winner} won round {self.round_number} ---")
+        logging.debug(f"Current Round Score: {self.players[0].name}: {self.players[0].rounds_won}, {self.players[1].name}: {self.players[1].rounds_won}")
 
     def resolve_effect(self,player,card):
         if card.name=="DRAW1":
@@ -224,7 +233,8 @@ class game(Env): # Env -> gym Environment
         elif card.name=="DRAW2":
             player.draw_hand(2)
         else:
-            print("unknown effect, bro")
+            logging.debug("unknown effect, bro")
+            pass
 
     def row_sort_order(self,row_card_tuple: tuple):
         row, _ = row_card_tuple
@@ -243,29 +253,30 @@ class game(Env): # Env -> gym Environment
         for row, cards in deck:
             if row == Row.EFFECTS and not display_effects:
                 continue
-            print(colors[row],f"{row}:")
-            print(f"{'+----------+ '*len(cards)}")
-            print(f"{'|          | '*len(cards)}")
-            print(" ".join([f"| {card.name}" + " "*(9-len(card.name))+"|" for card in cards]))
-            print(" ".join([f"| Str: {card.strength}   |" for card in cards]))
-            print(f"{'|          | '*len(cards)}")
-            print(f"{'+----------+ '*len(cards)}")
-            print(Fore.WHITE)
+            logging.debug(colors[row],f"{row}:")
+            logging.debug(f"{'+----------+ '*len(cards)}")
+            logging.debug(f"{'|          | '*len(cards)}")
+            logging.debug(" ".join([f"| {card.name}" + " "*(9-len(card.name))+"|" for card in cards]))
+            logging.debug(" ".join([f"| Str: {card.strength}   |" for card in cards]))
+            logging.debug(f"{'|          | '*len(cards)}")
+            logging.debug(f"{'+----------+ '*len(cards)}")
+            logging.debug(Fore.WHITE)
 
     def render(self,players): # gym required method 
-        print(f"\nCurrent Score - Round: {self.round_number} Turn Score:{self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
-        print("\n------ Current Board ------")
-        print("###############################################################################################################")
+        logging.debug(f"\nCurrent Score - Round: {self.round_number} Turn Score:{self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
+        logging.debug("\n------ Current Board ------")
+        logging.debug("###############################################################################################################")
         for player in players:
             # Display Player 1's Board
-            print(f"{player.name}'s Board:")
+            logging.debug(f"{player.name}'s Board:")
             self.display_rows(list(player.rows.items()), False, player==players[0])
-            print("###############################################################################################################")
+            logging.debug("###############################################################################################################")
 
     def display_sum(self,player):
-        print(f"{player.name}'s Current Sums:")
+        logging.debug(f"{player.name}'s Current Sums:")
         for row, cards in player.rows.items():
-            print(f"{row}: {sum(card.strength for card in cards)}")
+            logging.debug("%s: %i", row, sum(card.strength for card in cards))
+            
 
     def update_win_points(self):
         if self.players[0].turn_score >= self.players[1].turn_score:
@@ -280,7 +291,7 @@ class game(Env): # Env -> gym Environment
         for row in self.players[0].rows:
             self.players[0].row_score[row] = self.players[0].get_row_sum(row)
             self.players[1].row_score[row] = self.players[1].get_row_sum(row)
-            #print(self.players[0].row_score[row]) # DEBUG
+            #logging.debug(self.players[0].row_score[row]) # DEBUG
             if row == Row.EFFECTS:
                 continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
@@ -301,7 +312,7 @@ class game(Env): # Env -> gym Environment
         logging.debug(
             f"{self.players[0].name}'s wins {self.players[0].turn_score} rows\n"\
             f"{self.players[1].name}'s wins {self.players[1].turn_score} rows"
-        )
+            )
     
     def display_winner(self):
         winner = ""
@@ -310,9 +321,9 @@ class game(Env): # Env -> gym Environment
         elif self.players[0].rounds_won > self.players[1].rounds_won:
             winner = self.players[0].name
         if winner:
-            print(f"{winner} won the game!")
+            logging.debug(f"{winner} won the game!")
         else:
-            print("Draw - No one won the game")
+            logging.debug("Draw - No one won the game")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
         logging.debug(f"{winner} won the game!")
         logging.debug(f"\nGame ended - {time_stamp}")
@@ -334,7 +345,7 @@ class game(Env): # Env -> gym Environment
     def __init__(self, training=False):
         super().__init__()
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
+        logging.basicConfig(level=logging.debug, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
         self.done = False
         if training:

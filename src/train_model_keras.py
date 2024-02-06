@@ -1,4 +1,4 @@
-from src.game import game
+from src.game import Game
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
@@ -24,7 +24,7 @@ def build_agent(model, actions):
     return dqn
 
 def main():
-    env = game(True)
+    env = Game(True)
     while(True):
         episodes=input(f"How many games should be played for training?")
         episodes=int(episodes)

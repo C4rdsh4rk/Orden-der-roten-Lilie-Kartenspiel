@@ -75,10 +75,10 @@ class Player(ABC):
         if self.passed:
             return
         
+        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
         if ar_action!=0:
             chosen_card = valid_choices[ar_action]
         else:
-            valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
             chosen_card = self.make_card_choice(valid_choices)
         
         row = chosen_card.type
@@ -210,7 +210,7 @@ class ArtificialRetardation(Player):
         while loop_flag:
             #clear_screen()
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            print(f"{self.name} is building his deck")
+            #print(f"{self.name} is building his deck")
             self.display_deck()# cpu chooses a random card
             chosen_card = random.choice(booster_pack)
             # deck building checks
