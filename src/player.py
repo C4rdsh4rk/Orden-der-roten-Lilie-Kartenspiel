@@ -5,6 +5,7 @@ from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
+from itertools import chain
 
 any_row_choice = {
     1: Row.FRONT,
@@ -18,7 +19,8 @@ class Player(ABC):
         self.name = name
         self.idiot = idiot
         self.deck = []
-        self.hand = [] # Add a hand attribute
+        self.hand = []
+        self.graveyard = []
         self.score_vector = []
         self.turn_score = 0
         self.passed = False
@@ -32,6 +34,8 @@ class Player(ABC):
         }
 
     def clear_rows(self):
+        played_cards = list(chain(*self.rows.values()))
+        self.graveyard += played_cards
         self.rows = {
             Row.FRONT: [],
             Row.WISE: [],

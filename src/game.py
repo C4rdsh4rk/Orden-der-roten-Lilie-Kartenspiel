@@ -28,6 +28,18 @@ class game(Env): # Env -> gym Environment
         self.display = CardTable()
         if not training:
             self.game_loop()# Start game loop
+    
+
+    def update_player_info(self, player, bottom_player) -> None:
+        self.display.set_player_info(
+            player.name,
+            len(player.deck),
+            len(player.graveyard),
+            player.last_move,
+            player.turn_score,
+            player.rounds_won,
+            bottom_player
+        )
 
     def display_winner(self):
         winner = ""
@@ -71,8 +83,8 @@ class game(Env): # Env -> gym Environment
             else:
                 player.draw_hand(10,True)
             logging.debug("%s drew cards", player.name)
-        self.display.update_card_hand(self.players[0].hand, True)
-        self.display.update_card_hand(self.players[1].hand, False)
+            self.display.update_card_hand(player.hand, player==self.players[0])
+            self.update_player_info(player, player==self.players[0])
         while(True):
             # Take turns playing cards
             for player in self.players:
@@ -84,17 +96,8 @@ class game(Env): # Env -> gym Environment
             # update view
             for player in self.players:
                 bottom_player = player == self.players[0]
-
                 self.display.set_player_cards(list(player.rows.items()), bottom_player)
-                self.display.set_player_info(
-                    player.name,
-                    len(player.deck),
-                    player.total_cards - len(player.deck) - len(player.hand),
-                    player.last_move,
-                    player.turn_score,
-                    player.rounds_won,
-                    bottom_player
-                )
+                self.update_player_info(player, bottom_player)
                 self.display.update_card_hand(player.hand, bottom_player)
             logging.debug("%s's wins %s rows", self.players[0].name, self.players[0].turn_score)
             logging.debug("%s's wins %s rows", self.players[1].name, self.players[1].turn_score)
@@ -103,22 +106,14 @@ class game(Env): # Env -> gym Environment
                 self.reset_row_scores()
                 for player in self.players:
                     bottom_player = player == self.players[0]
-                    self.display.set_player_info(
-                        player.name,
-                        len(player.deck),
-                        player.total_cards - len(player.deck) - len(player.hand),
-                        player.last_move,
-                        player.turn_score,
-                        player.rounds_won,
-                        bottom_player
-                    )
+                    self.update_player_info(player, bottom_player)
                 break
         winner = self.get_round_winner()
         if len(winner) == 2:
             win_message = "Draw! Both players receive a point!"
         else:
             win_message = f"{winner[0].name} wins the round!"
-        self.display.write_message(win_message)   
+        self.display.write_message(win_message)
         self.display._setup_board()
         time.sleep(2)
         return self.players#, self.check_winning()# gym needs return game state, reward(?), done and info
@@ -192,8 +187,8 @@ class game(Env): # Env -> gym Environment
     def game_loop(self):
         # setup display
         with Live(self.display.layout, refresh_per_second=4):
-            self.display.set_player_info(self.players[0].name, len(self.players[0].deck), 0, "No move", 0, 0, True)
-            self.display.set_player_info(self.players[1].name, len(self.players[1].deck), 0, "No move", 0, 0, False)
+            self.display.set_player_info(self.players[0].name, len(self.players[0].deck), len(self.players[0].graveyard), "No move", 0, 0, True)
+            self.display.set_player_info(self.players[1].name, len(self.players[1].deck), len(self.players[1].graveyard), "No move", 0, 0, False)
             # Play three rounds
             self.round_num = 1
             while(self.players[0].rounds_won<3 and self.players[1].rounds_won<3):
