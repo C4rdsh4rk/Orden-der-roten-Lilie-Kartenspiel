@@ -202,7 +202,7 @@ class ArtificialRetardation(Player):
             print(f"{self.name} passed due to no cards to play.")
             self.passed = True
         else:
-            self.passed = random.choices([False, True],[0.8,0.2],k=1)[0]
+            self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]
         return self.passed
     
     def build_deck(self, booster):

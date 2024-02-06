@@ -11,7 +11,7 @@ from rl.memory import SequentialMemory
 
 def build_model(env):
     model = Sequential()    
-    model.add(Dense(24, activation='relu', input_shape=(234,)))
+    model.add(Dense(24, activation='relu', input_shape=env.observation_space.shape))
     model.add(Dense(24, activation='relu'))
     model.add(Dense(env.action_space.n, activation='linear'))
     return model
@@ -31,8 +31,7 @@ def main():
         if isinstance(episodes,int) and episodes>0:
             break
         else:
-            print(f"Wrong input, try again")
-            
+            print(f"Wrong input, try again")   
     for episode in range(1, episodes+1):
         done = False
         score = 0 
@@ -41,20 +40,18 @@ def main():
             action = env.action_space.sample()
             n_state, reward, done, info = env.step(action)
         print('Episode:{} Score:{}'.format(episode, reward))
-    '''NN_architecture = build_model(env)
-    NN_architecture.summary()
-    neural_nutjob = build_agent(NN_architecture,env.action_space.n)
-    neural_nutjob.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['accuracy'])
-    neural_nutjob.fit(env, nb_steps=50000, visualize=False, verbose=1)
-    _ = neural_nutjob.test(env, nb_episodes=15, visualize=True)
-    neural_nutjob.save_weights('dqn_weights.h5f', overwrite=True)'''
+
     NN_architecture = build_model(env)
     NN_architecture.summary()
     
     neural_nutjob = build_agent(NN_architecture, env.action_space.n)
+    print(f"Agent build")
     neural_nutjob.compile(optimizer=Adam(learning_rate=0.001), metrics=[keras.metrics.Accuracy()])
-    neural_nutjob.fit(env, nb_steps=50000, visualize=False, verbose=1)
-    _ = neural_nutjob.test(env, nb_episodes=15, visualize=True)
+    print(f"Model compiled")
+    neural_nutjob.fit(env, nb_steps=10, visualize=False, verbose=1)
+    print(f"Started fit")
+    _ = neural_nutjob.test(env, nb_episodes=2, visualize=True)
+    print(f"Finished test and saving weights!")
     neural_nutjob.save_weights('dqn_weights.h5f', overwrite=True)
 
 if __name__ == "__main__":

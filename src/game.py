@@ -12,6 +12,7 @@ import numpy as np
 
 class game(Env): # Env -> gym Environment
     def __init__(self, training=False):
+        super().__init__()
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
         time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
@@ -25,7 +26,6 @@ class game(Env): # Env -> gym Environment
         # Display the decks
         for player in self.players:
             player.display_deck()
-        self.round_number=1
         if training:           
             self.action_space = Discrete(39)
             for player in self.players:
@@ -36,6 +36,7 @@ class game(Env): # Env -> gym Environment
 
     def initialize_game(self,training=False):
         utils.clear_screen()
+        self.round_number=1
         if not training:
             while True:
                 choice = utils.get_user_input("Choose a game mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
@@ -64,15 +65,14 @@ class game(Env): # Env -> gym Environment
         return player1, player2
     
     def reset_game(self):
-        pass
-        #for player in self.players:
-            #player.deck = []
-            #player.hand = []
-            #player.passed = False
-            #player.rounds_won = 0
-            #player.clear_rows()
+        for player in self.players:
+            player.deck = []
+            player.hand = []
+            player.passed = False
+            player.rounds_won = 0
+            player.clear_rows()
             #self.__init__()# infinite game loop
-            #self.round_number=5
+            self.round_number=5
 
     def close(self): # gym method
         # Implement any necessary cleanup
@@ -110,7 +110,7 @@ class game(Env): # Env -> gym Environment
             score_vector[i+1] = int(self.players[1].row_score[row])
             i+=2
         state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector])
-        logging.debug(f"State:{state}")
+        logging.debug(f"State:{state.shape}")
         # Flatten the row scores and card hands into one long vector
         return state
 
@@ -136,8 +136,8 @@ class game(Env): # Env -> gym Environment
         return self.get_state(), self.reward_function(self.players[0]), self.done, info
     
     def play_turn(self,player,ar_action=None): # Normal turn
-        print(f"\n{player.name}'s Turn:")
         player.turn_number+=1
+        print(f"\n{player.name}'s Turn:")
         logging.debug(f"\nROUND: {self.round_number}")
         logging.debug(f"{player.name}'s hand: {len(player.hand)}")
         logging.debug(f"{player.name}'s turn: {player.turn_number}")
