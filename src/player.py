@@ -15,6 +15,7 @@ any_row_choice = {
 class Player(ABC):
     def __init__(self, name, idiot):
         self.name = name
+        self.reward = 0
         self.idiot = idiot # Human, PC or NN
         self.deck = [] # Deck of cards
         self.hand = [] # Hand cards attribute
@@ -189,7 +190,7 @@ class Human(Player):
 class ArtificialRetardation(Player):
     def __init__(self, name, idiot):
         super().__init__(name, idiot)
-        self.reward = 0
+        
 
     def make_card_choice(self, valid_choices):
         return self.hand[int(random.choice(valid_choices))-1]

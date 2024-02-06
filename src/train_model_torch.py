@@ -57,7 +57,7 @@ def main():
     # Use traditional actor-critic policy gradient updates to
     # find good initial parameters
     model.learn(total_timesteps=10000)
-    model.save('PPO')
+    model.save('DQNAgent')
     evaluate_policy(model, env, n_eval_episodes=1000, render=False)
     # population size of 50 invdiduals
     
@@ -68,17 +68,17 @@ def main():
     (key, value)
     for key, value in model.policy.state_dict().items()
     if ("policy" in key or "shared_net" in key or "action" in key)
-)
+    )
 
     ## START EVOLUTIONARY TRAINING 
 
-    pop_size = 50 # Population size
+    pop_size = 200 # Population size
     # Keep top 10%
     n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
     # Retrieve the environment
     vec_env = model.get_env()
 
-    for iteration in range(10):
+    for iteration in range(100):
         # Create population of candidates and evaluate them
         population = []
         for population_i in range(pop_size):
@@ -102,6 +102,7 @@ def main():
         mean_fitness = sum(top_candidate[1] for top_candidate in top_candidates) / n_elite
         print(f"Iteration {iteration + 1:<3} Mean top fitness: {mean_fitness:.2f}")
         print(f"Best fitness: {top_candidates[0][1]:.2f}")
+    model.save_replay_buffer("DQN_with_replay")
 
 if __name__ == "__main__":
     main()

@@ -81,6 +81,7 @@ class Game(Env): # Env -> gym Environment
             player.deck = [] # Deck of cards
             player.hand = [] # Hand cards attribute
             player.turn_score = 0
+            player.reward = 0
             player.turn_number = 0
             player.passed = False
             player.rounds_won = 0
@@ -202,6 +203,7 @@ class Game(Env): # Env -> gym Environment
             # Take turns playing cards
             for player in self.players:
                 self.play_turn(player)
+                self.reward_function(player)
                 #self.render(self.players)
             # Display the current score
             logging.debug(f"\nCurrent Rows Won - {self.players[0].name}: {self.players[0].turn_score}, {self.players[1].name}: {self.players[1].turn_score}")
@@ -253,14 +255,14 @@ class Game(Env): # Env -> gym Environment
         for row, cards in deck:
             if row == Row.EFFECTS and not display_effects:
                 continue
-            logging.debug(colors[row],f"{row}:")
-            logging.debug(f"{'+----------+ '*len(cards)}")
-            logging.debug(f"{'|          | '*len(cards)}")
-            logging.debug(" ".join([f"| {card.name}" + " "*(9-len(card.name))+"|" for card in cards]))
-            logging.debug(" ".join([f"| Str: {card.strength}   |" for card in cards]))
-            logging.debug(f"{'|          | '*len(cards)}")
-            logging.debug(f"{'+----------+ '*len(cards)}")
-            logging.debug(Fore.WHITE)
+            print(colors[row],f"{row}:")
+            print(f"{'+----------+ '*len(cards)}")
+            print(f"{'|          | '*len(cards)}")
+            print(" ".join([f"| {card.name}" + " "*(9-len(card.name))+"|" for card in cards]))
+            print(" ".join([f"| Str: {card.strength}   |" for card in cards]))
+            print(f"{'|          | '*len(cards)}")
+            print(f"{'+----------+ '*len(cards)}")
+            print(Fore.WHITE)
 
     def render(self,players): # gym required method 
         logging.debug(f"\nCurrent Score - Round: {self.round_number} Turn Score:{self.players[0].name}: {self.players[0].turn_score}\t,\t{self.players[1].name}: {self.players[1].turn_score}")
@@ -316,16 +318,20 @@ class Game(Env): # Env -> gym Environment
     
     def display_winner(self):
         winner = ""
+        reward = 0
         if self.players[0].rounds_won < self.players[1].rounds_won:
             winner = self.players[1].name
+            reward = self.players[1].reward
         elif self.players[0].rounds_won > self.players[1].rounds_won:
             winner = self.players[0].name
+            reward = self.players[0].reward
         if winner:
             logging.debug(f"{winner} won the game!")
         else:
             logging.debug("Draw - No one won the game")
         time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
         logging.debug(f"{winner} won the game!")
+        logging.debug(f"Final reward {reward} (to compare with NN)")
         logging.debug(f"\nGame ended - {time_stamp}")
         return
 
