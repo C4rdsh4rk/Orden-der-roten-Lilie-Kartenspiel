@@ -103,10 +103,6 @@ class game(Env): # Env -> gym Environment
             logging.debug("%s's wins %s rows", self.players[1].name, self.players[1].turn_score)
             if(self.players[0].passed and self.players[1].passed):
                 self.update_win_points()
-                self.reset_row_scores()
-                for player in self.players:
-                    bottom_player = player == self.players[0]
-                    self.update_player_info(player, bottom_player)
                 break
         winner = self.get_round_winner()
         if len(winner) == 2:
@@ -114,8 +110,12 @@ class game(Env): # Env -> gym Environment
         else:
             win_message = f"{winner[0].name} wins the round!"
         self.display.write_message(win_message)
-        self.display._setup_board()
+        for player in self.players:
+            bottom_player = player == self.players[0]
+            self.update_player_info(player, bottom_player)
         time.sleep(2)
+        self.display._setup_board()
+        self.reset_row_scores()
         return self.players#, self.check_winning()# gym needs return game state, reward(?), done and info
 
     def initialize_players(self):
