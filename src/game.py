@@ -7,6 +7,7 @@ from src.row import Row
 import src.utils as utils
 from src.player import Human, ArtificialRetardation
 from src.cards import Booster
+import numpy as np
 
 class game(Env): # Env -> gym Environment
     def __init__(self, training=False):
@@ -26,10 +27,22 @@ class game(Env): # Env -> gym Environment
         # Display the decks
         for player in self.players:
             player.display_deck()
-        self.round_number=0
+        self.round_number=1
         if training:
-            self.action_space = Discrete(50)
-            self.observation_space = {self.players[0].hand,self.players[0].deck,self.players[0].rows,self.players[1].rows}
+            self.update_win_points()
+            self.action_space = Discrete(40)
+            state_dict = {
+                'player_0_row_score': np.concatenate([np.array([[0],[0],[0]])]).flatten(),
+                'player_0_rounds_won': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_1_row_score': np.concatenate([np.array([[0],[0],[0]])]).flatten(),
+                'player_1_rounds_won': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_0_passed': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_1_passed': np.array([0])   # Use np.array instead of np.concatenate
+                        }
+            state = np.concatenate([np.array(value) for value in state_dict.values()])
+            self.observation_space = np.array(state)
+            for player in self.players:
+                player.draw_hand(10,True)
         else:
             self.game_loop()# Start game loop
 
@@ -72,6 +85,9 @@ class game(Env): # Env -> gym Environment
     def _get_obs(self): # gym method
         return {
         }
+    
+    def get_ar_action_meaning(self, ar_action):
+        pass
 
     def reward_function(self,player):
         if player.idiot == "nn":
@@ -80,28 +96,69 @@ class game(Env): # Env -> gym Environment
         return player.reward
     
     def step(self,ar_action): # Training turn for gym
-        logging.debug(f"AR action: {ar_action}")
         self.play_turn(self.players[0],ar_action)
         self.play_turn(self.players[1])
-        info = {self.players[0].hand,self.players[0].deck,self.players[0].rows,self.players[1].rows, self.players[0].turn_number, self.round_number} # Board, hand and round number are info for network
-        state = {self.players[0].row_score,self.players[0].rounds_won, self.players[1].row_score,self.players[1].rounds_won,self.players[0].passed, self.players[1].passed} # Row and winning score are relevant state
-        logging.debug(f"{info},{state}")
+        if self.players[0].passed and self.players[1].passed:
+            self.display_round_result()
+            self.round_number+=1
+            self.update_win_points()
+            for player in self.players:
+                player.clear_rows()
+            self.done = (self.players[0].rounds_won >= 2 or self.players[1].rounds_won >= 2)
+        info = {} 
+        ''' np.array([
+            np.concatenate(self.players[0].hand),
+            np.concatenate(self.players[0].deck),
+            np.concatenate([np.array(value) for value in self.players[0].rows.values()]),
+            np.concatenate([np.array(value) for value in self.players[1].rows.values()]),
+            self.players[0].turn_number,
+            self.round_number
+        ])'''
+        state_dict = {
+                'player_0_row_score': np.concatenate([np.array([[0],[0],[0]])]).flatten(),
+                'player_0_rounds_won': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_1_row_score': np.concatenate([np.array([[0],[0],[0]])]).flatten(),
+                'player_1_rounds_won': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_0_passed': np.array([0]),  # Use np.array instead of np.concatenate
+                'player_1_passed': np.array([0])   # Use np.array instead of np.concatenate
+                }
+        '''{
+            'player_0_row_score': np.concatenate([np.array(value) for value in self.players[0].row_score.values()]).flatten(),
+            'player_0_rounds_won': np.concatenate(self.players[0].rounds_won).flatten(),
+            'player_1_row_score': np.concatenate([np.array(value) for value in self.players[1].row_score.values()]).flatten(),
+            'player_1_rounds_won': np.concatenate(self.players[1].rounds_won).flatten(),
+            'player_0_passed': np.concatenate(self.players[0].passed).flatten(),
+            'player_1_passed': np.concatenate(self.players[1].passed).flatten()
+        }'''
+        state = state = np.concatenate([np.array(value) for value in state_dict.values()]) # Row and winning score are relevant state
+        #logging.debug(f"{info},{state}")
         if self.done:
             self.display_winner()
         return state, self.reward_function(self.players[0]), self.done, info
     
     def play_turn(self,player,ar_action=None): # Normal turn
+        player.turn_number+=1
+        logging.debug(f"ROUND: {self.round_number}")
+        logging.debug(f"{player.name}'s hand: {len(player.hand)}")
+        logging.debug(f"{player.name}'s turn: {player.turn_number}")
+        logging.debug(f"AR action: {ar_action}")
+
         if len(player.hand)==0:
             player.passed = True
+            logging.debug(f"{player.name} has no cards left and PASSED")
         if not ar_action==None and not player.passed:
-            if ar_action == 'p':
+            logging.debug(f"AR_case")
+            if ar_action == 40:
                 player.passed = True
+                logging.debug(f"AR passed")
             elif ar_action:
-                player.play_card()
+                played_card = player.play_card()
+                logging.debug(f"AR played card: {played_card}")
         if not player.passed and ar_action==None:
             player.make_pass_choice()
             print(f"\n{player.name}'s Turn:")
-            player.play_card()
+            played_card = player.play_card()
+            logging.debug(f"CPU played card: {played_card}")
             self.render(self.players)
             self.update_row_scores()
         return
@@ -138,8 +195,8 @@ class game(Env): # Env -> gym Environment
                 self.update_win_points()
                 break
 
-        self.round_number += 1
         self.display_round_result()
+        self.round_number += 1
         self.done = (self.players[0].rounds_won >= 2 or self.players[1].rounds_won >= 2)
 
     def display_round_result(self) -> None:
@@ -169,6 +226,7 @@ class game(Env): # Env -> gym Environment
                     player2 = ArtificialRetardation("Clueless Robot", "pc")
                     break
         else:
+            logging.debug(f"NN Player activated")
             player1 = ArtificialRetardation("Neural Nutjob", "nn")
             player2 = ArtificialRetardation("Trained Monkey", "pc")
         return player1, player2
@@ -234,6 +292,7 @@ class game(Env): # Env -> gym Environment
         for row in self.players[0].rows:
             self.players[0].row_score[row] = self.players[0].get_row_sum(row)
             self.players[1].row_score[row] = self.players[1].get_row_sum(row)
+            #print(self.players[0].row_score[row]) # DEBUG
             if row == Row.EFFECTS:
                 continue
             if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):

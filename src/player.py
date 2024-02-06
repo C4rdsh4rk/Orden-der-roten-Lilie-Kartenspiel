@@ -11,7 +11,6 @@ any_row_choice = {
     2: Row.WISE,
     3: Row.SUPPORT
 }
-
 class Player(ABC):
     def __init__(self, name, idiot):
         self.name = name
@@ -41,7 +40,7 @@ class Player(ABC):
     def get_row_sum(self, row) -> list[int]:
         return sum(card.strength for card in self.rows[row])
     
-    def draw_hand(self, num_cards=10,shuffle=False):
+    def draw_hand(self, num_cards=2,shuffle=False):
         if shuffle:
             random.shuffle(self.deck)
         # Draw cards from the deck
@@ -60,15 +59,18 @@ class Player(ABC):
         print(f"{self.name}'s Hand:")
         card_number=1
         for card in self.hand:
-            print(f"[{card_number}]{card.name} ({card.strength})", end="")
+            print(f"|[{card_number}]{card.name} ({card.strength})| ", end="")
             card_number+=1
     
-    def play_card(self) -> None:
+    def play_card(self,ar_action=0) -> None:
         if self.passed:
             return
         
-        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
-        chosen_card = self.make_card_choice(valid_choices)
+        if ar_action!=0:
+            chosen_card = valid_choices[ar_action]
+        else:
+            valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
+            chosen_card = self.make_card_choice(valid_choices)
         
         row = chosen_card.type
         if row == Row.ANY:
@@ -78,7 +80,8 @@ class Player(ABC):
         card_index = self.hand.index(chosen_card)
         self.hand = self.hand[:card_index] + self.hand[card_index+1:]
         print(f"{self.name}: Played {chosen_card.name} with strength {chosen_card.strength} in {chosen_card.type}.")
-    
+        return chosen_card
+
     def make_pass_choice(self) -> bool:
         """
         Function that determines if the player passes
