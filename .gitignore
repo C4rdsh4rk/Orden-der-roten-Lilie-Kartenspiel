@@ -3,7 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*.zip
+*.rar
+*.7z
 *.log
+*.csv
+*.tfevents*
 
 *gpt*
 
