@@ -150,7 +150,7 @@ class game(Env): # Env -> gym Environment
     
     def play_turn(self,player,ar_action=None): # Normal turn
         player.turn_number+=1
-        logging.debug(f"ROUND: {self.round_number}")
+        logging.debug(f"\nROUND: {self.round_number}")
         logging.debug(f"{player.name}'s hand: {len(player.hand)}")
         logging.debug(f"{player.name}'s turn: {player.turn_number}")
         logging.debug(f"AR action: {ar_action}")
