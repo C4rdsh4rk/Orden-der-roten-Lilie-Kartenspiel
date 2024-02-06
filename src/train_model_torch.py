@@ -6,7 +6,7 @@ from src.game import Game
 #import random
 import os
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO,DQN
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
@@ -15,6 +15,7 @@ def main():
     log_path = os.path.join('Training', 'Logs')
     env = Game(True)
     check_env(env, warn=True)
+    '''
     while(True):
         episodes=input(f"How many games should be played before training?")
         episodes=int(episodes)
@@ -22,7 +23,8 @@ def main():
             break
         else:
             print(f"Wrong input, try again")
-    
+    '''
+    episodes = 50000
     for episode in range(1, episodes+1):
         done = False
         score = 0 
@@ -33,7 +35,7 @@ def main():
         #print(f"Episode:{episode} Score:{reward}")
         observation = env.reset()
 
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_path)
+    model = DQN("MlpPolicy", env, verbose=1, tensorboard_log=log_path) # alias of DQNPolicy # PPO
     model.learn(total_timesteps=10000)
     model.save('PPO')
     evaluate_policy(model, env, n_eval_episodes=1000, render=False)
