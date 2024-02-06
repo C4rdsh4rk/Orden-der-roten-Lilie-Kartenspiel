@@ -4,7 +4,7 @@ import gymnasium as gym #TEST
 from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
-from src.cards import Card
+from src.cards import Card, EffectCard
 from itertools import chain
 
 any_row_choice = {
@@ -46,7 +46,7 @@ class Player(ABC):
     def get_row_sum(self, row) -> list[int]:
         return sum(card.strength for card in self.rows[row])
     
-    def draw_hand(self, num_cards=10,shuffle=False):
+    def draw_hand(self, num_cards=10, shuffle=False):
         if shuffle:
             random.shuffle(self.deck)
         # Draw cards from the deck
@@ -59,16 +59,8 @@ class Player(ABC):
         print(f"{self.name}'s Deck:")
         for card in self.deck:
             print(f"{card.name} ({card.strength})")
-
-    def display_hand(self):
-        #clear_screen()
-        print(f"{self.name}'s Hand:")
-        card_number=1
-        for card in self.hand:
-            print(f"[{card_number}]{card.name} ({card.strength})", end="")
-            card_number+=1
     
-    def play_card(self, display) -> None:
+    def play_card(self, display, opponent) -> None:
         if not self.hand or self.make_pass_choice(display):
             self.passed = True
             self.last_move = "Passed"
@@ -76,14 +68,21 @@ class Player(ABC):
 
         valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
         chosen_card = self.make_card_choice(valid_choices, display)
+
+        # remove card, this has to be done to any payed card
+        card_index = self.hand.index(chosen_card)
+        self.hand = self.hand[:card_index] + self.hand[card_index+1:]
+
+        if isinstance(chosen_card, EffectCard):
+            chosen_card.execute_effect(self, opponent)
+            self.last_move = f"{chosen_card.name}"
+            return            
         
         row = chosen_card.type
         if row == Row.ANY:
             row = self.make_row_choice(chosen_card, display)
-        # add card to row to play it and remove it from the hand
+        # add card to row to play it
         self.rows[row].append(chosen_card)
-        card_index = self.hand.index(chosen_card)
-        self.hand = self.hand[:card_index] + self.hand[card_index+1:]
         self.last_move = f"{chosen_card.name}->{row.value}"
     
     def make_pass_choice(self, display) -> bool:

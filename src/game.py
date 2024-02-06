@@ -87,11 +87,11 @@ class game(Env): # Env -> gym Environment
             self.update_player_info(player, player==self.players[0])
         while(True):
             # Take turns playing cards
-            for player in self.players:
+            for player_index, player in enumerate(self.players):
                 # skip player if he has passed
                 if player.passed:
                     continue
-                player.play_card(self.display)
+                player.play_card(self.display ,self.players[1-player_index])
             self.update_row_scores()
             # update view
             for player in self.players:
