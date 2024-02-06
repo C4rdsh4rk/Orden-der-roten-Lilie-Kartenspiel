@@ -5,6 +5,7 @@ from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
+import numpy as np
 
 any_row_choice = {
     1: Row.FRONT,
@@ -39,6 +40,14 @@ class Player(ABC):
     
     def get_row_sum(self, row) -> list[int]:
         return sum(card.strength for card in self.rows[row])
+    
+    def get_board(self):
+        board_vector = np.zeros((38,3))
+        for row, cards_in_row in self.rows.items():
+            for card in cards_in_row:
+                card_vector = card.get_card_vector()  # Assuming get_card_vector method returns the vector representation
+                board_vector[row.value] += card_vector
+        return board_vector
     
     def draw_hand(self, num_cards=2,shuffle=False):
         if shuffle:
@@ -130,10 +139,11 @@ class Human(Player):
         ]
     
     def make_pass_choice(self) -> bool:
-        return bool(int(get_user_input(
+        self.passed = bool(int(get_user_input(
             "Pass? 0 - No, 1 - Yes: ",
             ["0", "1"]
         )))
+        return self.passed
     
     
     def build_deck(self, booster):
