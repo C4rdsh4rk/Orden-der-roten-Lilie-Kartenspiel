@@ -173,15 +173,16 @@ class CardTable:
         )
 
     def ask_prompt(self, prompt: str, choices) -> str:
-        self.write_message(prompt)
+        self.write_message(prompt + ":")
         key = ""
         add = ""
         while key not in choices:
             while True:
-                add = getchlib.getkey()#Prompt.ask(prompt=prompt, choices=choices, console=self.layout["prompt_view"])
-                if add == "\x7f" or add == b"\x08":  # this is the delete button
+                # the ' character has to be replaced due to a bug in the getchlib library (which returns "'character'" on windows instead of "character")
+                add = getchlib.getkey().replace("'", "") #Prompt.ask(prompt=prompt, choices=choices, console=self.layout["prompt_view"])
+                if add == "\x7f" or add == "\\x08":  # this is the delete button
                     key = key[:-1]
-                elif add == "\n" or add == b"\r":
+                elif add == "\n" or add == "\\r":
                     break
                 else:
                     key += add

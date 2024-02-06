@@ -120,7 +120,7 @@ class Human(Player):
     def make_card_choice(self, valid_choices, display):
         valid_choices = [str(int(x)+1) for x in valid_choices] # User friendly numbers
         return self.hand[int(display.ask_prompt(
-            f"Choose a card from your hand [{valid_choices[0]}-{valid_choices[-1]}]:",
+            f"Choose a card from your hand [{valid_choices[0]}-{valid_choices[-1]}]",
             valid_choices
         ))-1]
     
@@ -133,7 +133,7 @@ class Human(Player):
         ]
     
     def make_pass_choice(self, display) -> bool:
-        return bool(int(display.ask_prompt("Pass? 0 - No, 1 - Yes: ", ["0", "1"])))
+        return bool(int(display.ask_prompt("Pass? 0 - No, 1 - Yes", ["0", "1"])))
     
     def build_deck(self, booster):
         loop_flag = True
