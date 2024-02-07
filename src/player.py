@@ -6,6 +6,7 @@ from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
 import numpy as np
+from stable_baselines3 import PPO,DQN
 
 any_row_choice = {
     1: Row.FRONT,
@@ -15,6 +16,7 @@ any_row_choice = {
 class Player(ABC):
     def __init__(self, name, idiot):
         self.name = name
+        self.reward = 0
         self.idiot = idiot # Human, PC or NN
         self.deck = [] # Deck of cards
         self.hand = [] # Hand cards attribute
@@ -75,10 +77,10 @@ class Player(ABC):
         if self.passed:
             return
         
+        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
         if ar_action!=0:
             chosen_card = valid_choices[ar_action]
         else:
-            valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
             chosen_card = self.make_card_choice(valid_choices)
         
         row = chosen_card.type
@@ -187,12 +189,17 @@ class Human(Player):
                 continue
 
 class ArtificialRetardation(Player):
-    def __init__(self, name, idiot):
+    def __init__(self, name, idiot, env=None):
         super().__init__(name, idiot)
-        self.reward = 0
-
-    def make_card_choice(self, valid_choices):
-        return self.hand[int(random.choice(valid_choices))-1]
+        if self.idiot=="nn":
+            self.model = DQN.load('DQNAgent', env=env)
+        
+    def make_card_choice(self, valid_choices, observation=None):
+        if observation:
+            action, _states = self.model.predict(observation, deterministic=True)
+            return self.hand[action]
+        else:
+            return self.hand[int(random.choice(valid_choices))-1]
     
     def make_row_choice(self, card) -> Row:
         return random.choice(list(any_row_choice.values()))
@@ -210,7 +217,7 @@ class ArtificialRetardation(Player):
         while loop_flag:
             #clear_screen()
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            print(f"{self.name} is building his deck")
+            #print(f"{self.name} is building his deck")
             self.display_deck()# cpu chooses a random card
             chosen_card = random.choice(booster_pack)
             # deck building checks

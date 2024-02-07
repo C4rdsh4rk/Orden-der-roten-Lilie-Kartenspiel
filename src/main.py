@@ -1,7 +1,8 @@
-from src.game import game
+from src.Board import Board
 
 def main():
-   game()
+   env = Board(True)
+
 
 if __name__ == "__main__":
     main()

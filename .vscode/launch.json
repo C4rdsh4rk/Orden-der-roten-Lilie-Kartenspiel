@@ -6,7 +6,7 @@
     "configurations": [
 
         {
-            "name": "Main Game",
+            "name": "Main Board",
             "type": "debugpy",
             "request": "launch",
             "module": "src.main"
