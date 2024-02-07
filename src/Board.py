@@ -19,22 +19,11 @@ class Board(Env): # Env -> gym Environment
 
     This class extends the gym Environment to create a customizable card game environment
     with options for human and AI players, logging, and network play.
-    
-    Attributes:
-        round_number (int): The current round number in the game.
-        network_active (bool): Flag indicating whether network features are active.
-        done (bool): Flag indicating whether the game is finished.
-        players (list): List of players in the game, which can include both human and AI players.
     """
     def __init__(self):
-        """Initializes the game board with optional network play.
-
-        Args:
-            network_active (bool): If True, sets up the environment for network play.
-        """
+        """Initializes the game board with optional network play."""
         super().__init__()
         self.round_number=0
-        self.network_active = network_active
         self.done = False
         self.half_board = {
             Row.FRONT: [],
@@ -112,7 +101,6 @@ class Board(Env): # Env -> gym Environment
         self.clear_hands() # Generate empty player hands
         utils.clear_screen()
         self.round_number = 1
-        return
 
     def initialize_decks(self) -> None:
         """Initializes decks and hands for all players in the game.
@@ -132,16 +120,6 @@ class Board(Env): # Env -> gym Environment
         self.action_space = Discrete(39)
         self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.float64)
 
-    def board_loop(self) -> None:
-        """Runs the main game loop, playing through rounds until the game is concluded."""
-        
-        # Play three rounds
-        self.round_number = 1
-        while not self.done:
-            self.play_round()
-        self.display_winner()
-        self.reset_Board()
-
     def close(self): # gym method
         """Cleans up the environment, to be called when the game is closed."""
         
@@ -158,22 +136,12 @@ class Board(Env): # Env -> gym Environment
             tuple: The initial state of the environment, and an empty info dict.
         """
         self.__init__()
-        return self.reset_Board(),{}
+        return self.get_state()
 
-    def _get_info(self): # gym method
-        """Returns diagnostic information useful for debugging."""
-       
-        raise NotImplementedError
-
-    def _get_obs(self): # gym method
-        """Returns the current observation of the game state.
-
-        Returns:
-            tuple: The observation, reward, done flag, and additional info.
-        """
-        info = {}
-        return self.get_state(), self.reward_function(self.players[0]), self.done, info
-    
+    def get_valid_choices(self):
+        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand1))],["{:1d}".format(x) for x in range(len(self.hand2))]
+        return valid_choices
+        
     def get_ar_action_meaning(self, ar_action):
         """Translates an action received from an AI into a meaningful game action.
 
@@ -202,7 +170,7 @@ class Board(Env): # Env -> gym Environment
 
         self.update_row_scores()
         score_vector = np.zeros(6)
-        
+
         i = 0
         for row in self.players[0].rows:
             if row == Row.EFFECTS:
@@ -210,7 +178,7 @@ class Board(Env): # Env -> gym Environment
             score_vector[i] = int(self.players[0].row_score[row])
             score_vector[i+1] = int(self.players[1].row_score[row])
             i+=2
-        
+
         self.state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector])
         logging.debug("State: %s",self.state)
         # Flatten the row scores and card hands into one long vector
@@ -229,85 +197,22 @@ class Board(Env): # Env -> gym Environment
         # player.reward+=player.turn_score + player.rounds_won*10 # V1
         reward = 0
         win_reward = 10
-        
+
         # Reward for winning a round
         if player.rounds_won > 0:
             reward += win_reward * (self.rounds_won1 - self.rounds_won2)
-            
+
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
         reward += 0.1 * player.turn_score
-            
-        if self.players[1].passed:
+
+        if self.passed2:
             reward += 1 + (self.turn_score2 - self.turn_score1)
 
         player.reward = reward
         logging.debug("REWARD: %s %s",player.name, player.reward)
         return player.reward
 
-    def step(self, ar_action): # network_active turn for gym
-        """Performs a step in the environment for network play, processing an action and updating the state.
-
-        Args:
-            ar_action (int): The action to be performed by the AI player.
-
-        Returns:
-            tuple: A tuple containing the new state, reward, done flag, and info dict.
-        """
-        self.play_turn(self.players[0],ar_action)
-        self.play_turn(self.players[1])
-        if self.players[0].passed and self.players[1].passed:
-            self.calculate_round_result()
-            self.round_number+=1
-            self.update_win_points()
-            self.clear_board()
-            self.done = (self.rounds_won1 >= 2 or self.rounds_won2 >= 2)
-        info = {} 
-        if self.done:
-            self.display_winner()
-        return self.get_state(), self.reward_function(self.players[0]), self.done, self.done, info
-    
-    def play_turn(self,player,ar_action=None): # Normal turn
-        """Executes a turn for the given player, optionally processing an AI action.
-
-        Args:
-            player (Player): The player whose turn it is.
-            ar_action (int, optional): The action to be performed if the player is an AI.
-
-        Note:
-            This method updates the game state based on the player's action and logs the turn.
-        """
-        player.turn_number+=1
-        logging.debug(f"\n{player.name}'s Turn:")
-        logging.debug(f"\nROUND: {self.round_number}")
-        logging.debug(f"{player.name}'s hand: {len(player.hand)}")
-        logging.debug(f"{player.name}'s turn: {player.turn_number}")
-        logging.debug("AR action: %s",ar_action)
-
-        if len(player.hand)==0:
-            player.passed = True
-            logging.debug(f"{player.name} has no cards left and PASSED")
-            logging.debug(f"{player.name} has no cards left and passed!")
-        if not ar_action==None and not player.passed:
-            logging.debug("AR_case")
-            if ar_action == 39: # max Deck length + passing option
-                player.passed = True
-                logging.debug("AR passed")
-            elif ar_action:
-                played_card = player.play_card()
-                logging.debug(f"AR played card: {played_card}")
-        if not player.passed and ar_action==None:
-            player.make_pass_choice()
-            if player.passed:
-                logging.debug(f"{player.name} passed")
-                logging.debug(f"{player.name} passed")
-            
-            played_card = player.play_card()
-            logging.debug(f"{player.name} played card: {played_card}")
-            self.render(self.players)
-            self.update_row_scores()
-        return
-    
     def draw_cards_to_hand(self, hand, deck, num_cards=2,shuffle=False):
         """Allows a player to draw a specified number of cards into their hand.
         Args:
@@ -323,35 +228,20 @@ class Board(Env): # Env -> gym Environment
         # Remove drawn cards from the deck
         deck = deck[num_cards:]
 
+    def play_card(self, hand, action, player, h_b) -> None:
+        chosen_card = hand[action]
+        row = chosen_card.type
+        if row == Row.ANY:
+            row = player.make_row_choice(chosen_card)
+        # add card to row to play it and remove it from the hand
+        if h_b==1:
+            self.half_board_bottom[row].append(chosen_card)
+        else:
+            self.half_board_top[row].append(chosen_card)
 
-    def play_round(self):
-        """Plays through a single round of the game, with each player taking turns until the round concludes."""
-        
-        # Draw hands for each player in the second and third rounds
-        if self.round_number>3:
-            print(Fore.RED+f"WTF THIS SHOULDN'T BE POSSIBLE - anyhow, enjoy the rest of your bugged Board")
-            logging.debug("ROUND OUT OF BOUNDS")
-        if self.round_number > 1:
-            for player in self.players:
-                player.clear_board()
-                player.draw_cards_to_hand(2)
-                player.passed = False
-                logging.debug("{player.name} drew 2 cards. Rows were cleared.")
-        while True:
-            # Take turns playing cards
-            for player in self.players:
-                self.play_turn(player)
-                self.reward_function(player)
-                #self.render(self.players)
-            # Display the current score
-            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.turn_score1}, {self.players[1].name}: {self.turn_score2}")
-            if self.players[0].passed and self.players[1].passed:
-                self.update_win_points()
-                break
-
-        self.calculate_round_result()
-        self.round_number += 1
-        self.done = (self.rounds_won1 >= 2 or self.rounds_won2 >= 2)
+        card_index = hand.index(chosen_card)
+        hand = hand[:card_index] + hand[card_index+1:]
+        return
 
     def calculate_round_result(self) -> None:
         """Logs the result of the current round, including the winner and updated scores."""
@@ -365,7 +255,11 @@ class Board(Env): # Env -> gym Environment
             logging.debug("The round was a draw, one point to both players!")
         if winner:
             logging.debug("\n--- Player {winner} won round {self.round_number} ---")
-        logging.debug("Current Round Score: %s : %s, %s : %s",self.players[0].name, self.rounds_won1, self.players[1].name, self.rounds_won2)
+        logging.debug("Current Round Score: %s : %s, %s : %s",
+                        self.players[0].name,
+                        self.rounds_won1,
+                        self.players[1].name,
+                        self.rounds_won2)
 
     def resolve_effect(self,player,card):
         """Applies the effect of a special card played by a player.
@@ -461,3 +355,29 @@ class Board(Env): # Env -> gym Environment
         logging.debug("Final reward %s (to compare with NN)", reward)
         logging.debug("\nBoard ended - %s", time_stamp)
         return winner
+
+    def play_round(self,action, players):
+        """Plays through a single round of the game, with each player taking turns until the round concludes."""
+        # Draw hands for each player in the second and third rounds
+        if self.round_number>3:
+            logging.debug("ROUND OUT OF BOUNDS")
+            self.done = True
+
+        if self.round_number > 1:
+            valid_choices = self.get_valid_choices()
+            if not self.passed1:
+                players[0].make_pass_choice()
+                if not self.passed1:
+                    action1 = players[0].make_card_choice(valid_choices[0])
+                    self.play_card(self.hand1, action1, players[0], 1)
+
+            if not self.passed2:
+                players[1].make_pass_choice()
+                if not self.passed2:
+                    action2 = players[1].make_card_choice(valid_choices[1])
+                    self.play_card(self.hand2, action2, players[1], 2)
+
+    def step(self, action, players):
+        self.play_round(action, players)
+        info = {}
+        return self.get_state(), self.reward_function(players[0]), self.done, self.done, info # gym required return

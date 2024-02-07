@@ -35,26 +35,6 @@ class Player(ABC):
         for card in self.hand:
             print(f"|[{card_number}]{card.name} ({card.strength})| ", end="")
             card_number+=1
-    
-    def play_card(self,ar_action=0) -> None:
-        if self.passed:
-            return
-        
-        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand))]
-        if ar_action!=0:
-            chosen_card = valid_choices[ar_action]
-        else:
-            chosen_card = self.make_card_choice(valid_choices)
-        
-        row = chosen_card.type
-        if row == Row.ANY:
-            row = self.make_row_choice(chosen_card)
-        # add card to row to play it and remove it from the hand
-        self.rows[row].append(chosen_card)
-        card_index = self.hand.index(chosen_card)
-        self.hand = self.hand[:card_index] + self.hand[card_index+1:]
-        print(f"{self.name}: Played {chosen_card.name} with strength {chosen_card.strength} in {chosen_card.type}.")
-        return chosen_card
 
     def make_pass_choice(self) -> bool:
         """
@@ -154,21 +134,18 @@ class Human(Player):
         return deck
 
 class ArtificialRetardation(Player):
-    def __init__(self, name, idiot, load_network=False):
+    def __init__(self, name, idiot):
         super().__init__(name, idiot)
-        if load_network:
-            self.model = DQN.load('DQNAgent', env=None)
-        
-    def make_card_choice(self, valid_choices, observation=None):
-        if observation:
-            action, _states = self.model.predict(observation, deterministic=True)
-            return self.hand[action]
+
+    def make_card_choice(self, hand, valid_choices, action=None):
+        if action:
+            return hand[action]
         else:
-            return self.hand[int(random.choice(valid_choices))-1]
-    
+            return hand[int(random.choice(valid_choices))-1]
+
     def make_row_choice(self, card) -> Row:
         return random.choice(list(any_row_choice.values()))
-    
+
     def make_pass_choice(self) -> bool:
         if len(self.hand)==0:
             print(f"{self.name} passed due to no cards to play.")
@@ -176,14 +153,12 @@ class ArtificialRetardation(Player):
         else:
             self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]
         return self.passed
-    
+
     def build_deck(self, booster):
         deck = []
         while True:
             #clear_screen()
-            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            #print(f"{self.name} is building his deck")
-            self.display_deck()# cpu chooses a random card
+            booster_pack = booster.open(5)
             chosen_card = random.choice(booster_pack)
             # deck building checks
             if sum(card.strength for card in deck) + chosen_card.strength <= 38:
