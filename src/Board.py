@@ -1,15 +1,18 @@
+# third party imports
 import logging
 import time
+import random
 from colorama import Fore
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
+import numpy as np
+# local imports
 from src.row import Row
 import src.utils as utils
-from src.player import Human, ArtificialRetardation
+#from src.player import Human, ArtificialRetardation
 from src.cards import Booster
-from src.cards import CardName
-import numpy as np
-import random
+#from src.cards import CardName
+
 
 class Board(Env): # Env -> gym Environment
     """Represents the game board environment for a card game.
@@ -23,7 +26,7 @@ class Board(Env): # Env -> gym Environment
         done (bool): Flag indicating whether the game is finished.
         players (list): List of players in the game, which can include both human and AI players.
     """
-    def __init__(self, network_active=False):
+    def __init__(self):
         """Initializes the game board with optional network play.
 
         Args:
@@ -32,6 +35,7 @@ class Board(Env): # Env -> gym Environment
         super().__init__()
         self.round_number=0
         self.network_active = network_active
+        self.done = False
         self.half_board = {
             Row.FRONT: [],
             Row.WISE: [],
@@ -40,6 +44,8 @@ class Board(Env): # Env -> gym Environment
         }
         self.empty_deck = []
         self.empty_hand = []
+
+        # Player attributes
         self.reward1 = 0
         self.reward2 = 0
         self.turn_score1 = 0
@@ -52,12 +58,11 @@ class Board(Env): # Env -> gym Environment
         self.passed2 = False
         self.rounds_won1 = 0
         self.rounds_won2 = 0
+
+        # Setup for game
         self.setup_logging()
-        self.done = False
         self.initialize_Board()
-        self.display_decks()
-        if network_active:
-            self.setup_network_active_environment()
+        self.setup_network_feedback()
 
     def clear_deck(self):
         """Clears the game board"""
@@ -93,7 +98,7 @@ class Board(Env): # Env -> gym Environment
         
         return board_vector
 
-    def setup_logging(self):
+    def setup_logging(self): # Possible Problem: Now creates log file for every individual game (might cause problems with training sessions)
         """Sets up logging for the game, creating a log file with a unique timestamp."""
     
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
@@ -108,29 +113,7 @@ class Board(Env): # Env -> gym Environment
         utils.clear_screen()
         self.round_number = 1
         return
- '''
-    def get_players(self, network_active):
-        """Creates and returns a list of players based on the game mode.
 
-        Args:
-            network_active (bool): Determines whether the game will include network-based players.
-        
-        Returns:
-            list: A list of player instances, which can be human or AI.
-        """
-        if network_active:
-            logging.debug("Training started - %s",self.log_time_stamp)
-            return [ArtificialRetardation("Neural Nutjob", "nn"), ArtificialRetardation("Trained Monkey", "pc")]
-        else:
-            logging.debug("Board started - %s",self.log_time_stamp)
-            choice = utils.get_user_input("Choose a Board mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
-            if choice == '1':
-                name = input("Enter your name: ").lower()
-                #return [Human(name, "human"), ArtificialRetardation("Trained Monkey", "pc")]
-                return [Human(name, "human"), ArtificialRetardation("Neural Nutjob", "nn")]
-            else:
-                return [ArtificialRetardation("Trained Monkey", "pc"), ArtificialRetardation("Clueless Robot", "pc")]
-'''
     def initialize_decks(self) -> None:
         """Initializes decks and hands for all players in the game.
 
@@ -144,20 +127,9 @@ class Board(Env): # Env -> gym Environment
         self.hand2 = self.draw_cards_to_hand(self.hand2, self.deck2, 10, True)
         logging.debug("Players drew 10 cards from their shuffled deck.")
 
-    def display_decks(self) -> None:
-        """Displays the decks of all players. Logs the deck information if network is not active."""
-   
-        for player in self.players:
-            logging.debug(player.deck)
-            if not self.network_active:
-                player.display_deck()
-
-    def setup_network_active_environment(self) -> None:
+    def setup_network_feedback(self) -> None:
         """Sets up the environment specifically for network play, including action and observation spaces."""
-        
         self.action_space = Discrete(39)
-        for player in self.players:
-            player.draw_cards_to_hand(10, True)
         self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.float64)
 
     def board_loop(self) -> None:
@@ -285,7 +257,7 @@ class Board(Env): # Env -> gym Environment
         self.play_turn(self.players[0],ar_action)
         self.play_turn(self.players[1])
         if self.players[0].passed and self.players[1].passed:
-            self.display_round_result()
+            self.calculate_round_result()
             self.round_number+=1
             self.update_win_points()
             self.clear_board()
@@ -377,11 +349,11 @@ class Board(Env): # Env -> gym Environment
                 self.update_win_points()
                 break
 
-        self.display_round_result()
+        self.calculate_round_result()
         self.round_number += 1
         self.done = (self.rounds_won1 >= 2 or self.rounds_won2 >= 2)
 
-    def display_round_result(self) -> None:
+    def calculate_round_result(self) -> None:
         """Logs the result of the current round, including the winner and updated scores."""
         
         winner = ""
@@ -390,10 +362,8 @@ class Board(Env): # Env -> gym Environment
         elif self.turn_score1 < self.turn_score2:
             winner = self.players[1].name
         else:
-            pass
             logging.debug("The round was a draw, one point to both players!")
         if winner:
-            pass
             logging.debug("\n--- Player {winner} won round {self.round_number} ---")
         logging.debug("Current Round Score: %s : %s, %s : %s",self.players[0].name, self.rounds_won1, self.players[1].name, self.rounds_won2)
 
@@ -410,7 +380,7 @@ class Board(Env): # Env -> gym Environment
             player.draw_cards_to_hand(2)
         else:
             logging.debug("unknown effect, bro")
-            pass
+            raise NotImplementedError
 
     def row_sort_order(self,row_card_tuple: tuple):
         """Determines the sorting order for cards in a row.
@@ -431,53 +401,8 @@ class Board(Env): # Env -> gym Environment
             return 1
         return 0
 
-    def display_rows(self,deck: list[tuple], display_effects=False, backwards=False):
-        """Displays the cards in each row, optionally including special effects cards, in a formatted output.
-
-        Args:
-            deck (list[tuple]): A list of tuples, each containing a row identifier and its associated cards.
-            display_effects (bool, optional): Whether to include special effects cards in the display. Defaults to False.
-            backwards (bool, optional): Whether to display the rows in reverse order. Defaults to False.
-        """
-        colors = {Row.FRONT: Fore.RED, Row.WISE: Fore.WHITE, Row.SUPPORT: Fore.GREEN, Row.EFFECTS: Fore.MAGENTA}
-        deck.sort(reverse=backwards, key=self.row_sort_order)
-        for row, cards in deck:
-            if row == Row.EFFECTS and not display_effects:
-                continue
-            print(colors[row],f"{row}:")
-            print(f"{'+----------+ '*len(cards)}")
-            print(f"{'|          | '*len(cards)}")
-            print(" ".join([f"| {card.name}" + " "*(9-len(card.name))+"|" for card in cards]))
-            print(" ".join([f"| Str: {card.strength}   |" for card in cards]))
-            print(f"{'|          | '*len(cards)}")
-            print(f"{'+----------+ '*len(cards)}")
-            print(Fore.WHITE)
-
-    def render(self,players): # gym required method 
-        """Renders the current game state to the console or log, showing the board and player scores.
-
-        Args:
-            players (list): The list of players in the game to be displayed.
-        """
-        logging.debug("\nCurrent Score - Round: {self.round_number} Turn Score:{self.players[0].name}: {self.turn_score1}\t,\t{self.players[1].name}: {self.turn_score2}")
-        logging.debug("\n------ Current Board ------")
-        #logging.debug("###############################################################################################################")
-        for player in players:
-            # Display Player 1's Board
-            logging.debug("%s's Board:", player.name)
-            self.display_rows(list(player.rows.items()), False, player==players[0])
-            #logging.debug("###############################################################################################################")
-
-    def display_sum(self,player):
-        """Logs the sum of card strengths for each row for the specified player.
-
-        Args:
-            player (Player): The player whose row sums are to be displayed.
-        """
-        logging.debug("{player.name}'s Current Sums:")
-        for row, cards in player.rows.items():
-            logging.debug("%s: %i", row, sum(card.strength for card in cards))
-            
+    def render(self): # gym required method
+        pass
 
     def update_win_points(self):
         """Updates the win points for each player based on the current round's results.
@@ -493,7 +418,7 @@ class Board(Env): # Env -> gym Environment
 
     def update_row_scores(self):
         """Updates the score for each row based on the current cards in play, affecting the overall game state."""
-        
+    
         player1_score = 0
         player2_score = 0
         for row in self.half_board:
@@ -514,30 +439,19 @@ class Board(Env): # Env -> gym Environment
                     player2_score += 1
         self.turn_score1 = player1_score # How many rows are won by this player at the time the function is called
         self.turn_score2 = player2_score # How many rows are won by this player at the time the function is called
-        return 
-    
-    def display_row_scores(self):
-        """Logs the current row scores for each player, indicating the state of the game."""
-        
-        logging.debug(
-                    "%s's wins %s rows\n"\
-                    "%s's wins %s rows"
-                    ,self.players[0].name,
-                    self.turn_score1,
-                    self.players[1].name,
-                    self.turn_score2)
-    
-    def display_winner(self):
+        return
+
+    def check_winner(self):
         """Determines and logs the winner of the game based on the final scores."""
-        
+
         winner = ""
         reward = 0
         if self.rounds_won1 < self.rounds_won2:
             winner = self.players[1].name
-            reward = self.players[1].reward
+            reward = self.reward2
         elif self.rounds_won1 > self.rounds_won2:
             winner = self.players[0].name
-            reward = self.players[0].reward
+            reward = self.reward1
         if winner:
             logging.debug("%s won the Board!", winner)
         else:
@@ -546,79 +460,4 @@ class Board(Env): # Env -> gym Environment
         logging.debug("%s won the Board!", winner)
         logging.debug("Final reward %s (to compare with NN)", reward)
         logging.debug("\nBoard ended - %s", time_stamp)
-        return
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-    def __init__(self, network_active=False):
-        super().__init__()
-        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
-        logging.basicConfig(level=logging.debug, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
-        time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
-        self.done = False
-        if network_active:
-            logging.debug("network_active started - {time_stamp}")
-            self.players=self.initialize_Board(network_active)
-        else:
-            logging.debug("Board started - {time_stamp}")
-            self.players=self.initialize_Board()
-        # Display the decks
-        for player in self.players:
-            player.display_deck()
-        if network_active:           
-            self.action_space = Discrete(39)
-            for player in self.players:
-                player.draw_cards_to_hand(10,True)
-            self.observation_space =  Box(low=0, high=38, shape=(234,), dtype=np.uint8) # self.get_state() #38 max hand cards + 76 max board cards +2 turn scores + 1 win points  
-        else:
-            self.board_loop()# Start Board loop
-
-    def initialize_Board(self,network_active=False):
-        utils.clear_screen()
-        self.round_number=1
-        if not network_active:
-            while True:
-                choice = utils.get_user_input("Choose a Board mode (type '1' to play yourself or '2' to simulate): ", ['1', '2'])
-                if choice == '1':
-                    name = input("Enter your name: ").lower()
-                    player1 = Human(name, "human")
-                    player2 = ArtificialRetardation("Trained Monkey", "pc")
-                    break
-                else:
-                    player1 = ArtificialRetardation("Trained Monkey", "pc")
-                    player2 = ArtificialRetardation("Clueless Robot", "pc")
-                    break
-        else:
-            logging.debug("NN Player activated")
-            player1 = ArtificialRetardation("Neural Nutjob", "nn")
-            player2 = ArtificialRetardation("Trained Monkey", "pc")
-        
-        # Build decks for each player
-        booster_instance = Booster()
-        player1.build_deck(booster_instance)
-        player2.build_deck(booster_instance)
-        
-        player1.draw_cards_to_hand(10,True)
-        player2.draw_cards_to_hand(10,True)
-        logging.debug("Players drew 10 cards from their shuffled deck.")
-        return player1, player2
-
-    def board_loop(self):
-      # Play three rounds
-        self.round_number = 1       
-        while not self.done:  # Using 'not' to check the condition and simplify the loop condition
-            self.play_round()
-        self.display_winner()
-        self.reset_Board() 
-'''
+        return winner
