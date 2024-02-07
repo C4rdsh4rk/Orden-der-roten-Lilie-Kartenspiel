@@ -1,8 +1,7 @@
 import random
 from colorama import Fore
-from src.row import Row
 from enum import Enum
-
+from src.row import Row
 
 class CardName(Enum):
     KNIGHT = 0

@@ -1,17 +1,14 @@
 from typing import Dict
-
 import gymnasium as gym
-import numpy as np
 import torch as th
 import os
-
 from stable_baselines3 import PPO,DQN
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.logger import configure
 
-from src.Board import Board
+from src.board import Board
 
 def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
     """Mutate parameters by adding normal noise to them"""
@@ -22,7 +19,7 @@ def main():
     env = Board(True)
     check_env(env, warn=True)
     
-    episodes = 50000
+    episodes = 1000
     '''
     while(True):
         episodes=input(f"How many Boards should be played before training?")
@@ -45,7 +42,6 @@ def main():
 
     # set up logger
     new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
-        
 
     model = DQN("MlpPolicy",
                 env,
@@ -58,10 +54,9 @@ def main():
     model.set_logger(new_logger)
     # Use traditional actor-critic policy gradient updates to
     # find good initial parameters
-    model.learn(total_timesteps=10000)
+    model.learn(total_timesteps=1000)
     model.save('DQNAgent')
-    evaluate_policy(model, env, n_eval_episodes=1000, render=False)
-    # population size of 50 invdiduals
+    evaluate_policy(model, env, n_eval_episodes=10, render=False)
     
     # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
     # in their name: only these ones affect the action.
@@ -72,15 +67,15 @@ def main():
     if ("policy" in key or "shared_net" in key or "action" in key)
     )
 
-    ## START EVOLUTIONARY TRAINING 
+    ## START EVOLUTIONARY TRAINING
 
-    pop_size = 200 # Population size
+    pop_size = 10 # Population size
     # Keep top 10%
     n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
     # Retrieve the environment
     vec_env = model.get_env()
 
-    for iteration in range(100):
+    for iteration in range(10):
         # Create population of candidates and evaluate them
         population = []
         for population_i in range(pop_size):

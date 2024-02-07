@@ -1,11 +1,9 @@
 from abc import ABC
 import random
-import gymnasium as gym #TEST
 from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
-import numpy as np
 from stable_baselines3 import PPO,DQN
 
 any_row_choice = {
@@ -18,51 +16,16 @@ class Player(ABC):
         self.name = name
         self.reward = 0
         self.idiot = idiot # Human, PC or NN
-        self.deck = [] # Deck of cards
-        self.hand = [] # Hand cards attribute
         self.turn_score = 0
         self.turn_number = 0
         self.passed = False
         self.rounds_won = 0
         self.row_score = {}
-        self.rows = {
-            Row.FRONT: [],
-            Row.WISE: [],
-            Row.SUPPORT: [],
-            Row.EFFECTS: [],
-        }
 
-    def clear_rows(self):
-        self.rows = {
-            Row.FRONT: [],
-            Row.WISE: [],
-            Row.SUPPORT: [],
-            Row.EFFECTS: [],
-        }
-    
-    def get_row_sum(self, row) -> list[int]:
-        return sum(card.strength for card in self.rows[row])
-    
-    def get_board(self):
-        board_vector = np.zeros((38,3))
-        for row, cards_in_row in self.rows.items():
-            for card in cards_in_row:
-                card_vector = card.get_card_vector()  # Assuming get_card_vector method returns the vector representation
-                board_vector[row.value] += card_vector
-        return board_vector
-    
-    def draw_hand(self, num_cards=2,shuffle=False):
-        if shuffle:
-            random.shuffle(self.deck)
-        # Draw cards from the deck
-        self.hand = self.hand + self.deck[:num_cards]
-        # Remove drawn cards from the deck
-        self.deck = self.deck[num_cards:]
-
-    def display_deck(self):
+    def display_deck(self,deck):
         #clear_screen()
         print(f"{self.name}'s Deck:")
-        for card in self.deck:
+        for card in deck:
             print(f"{card.name} ({card.strength})")
 
     def display_hand(self):
@@ -149,6 +112,7 @@ class Human(Player):
     
     
     def build_deck(self, booster):
+        deck = []
         loop_flag = True
         auto_build_deck=get_user_input(
             f"Do you want a random deck? 0 - No, 1 - Yes: ",
@@ -179,20 +143,21 @@ class Human(Player):
             else:  # cpu chooses a random card
                 chosen_card = random.choice(booster_pack)
             # deck building checks
-            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
-                self.deck.append(chosen_card)
-            elif sum(card.strength for card in self.deck) == 38:
+            if sum(card.strength for card in deck) + chosen_card.strength <= 38:
+                deck.append(chosen_card)
+            elif sum(card.strength for card in deck) == 38:
                 break
             else:
                 print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
+        return deck
 
 class ArtificialRetardation(Player):
-    def __init__(self, name, idiot, env=None):
+    def __init__(self, name, idiot, load_network=False):
         super().__init__(name, idiot)
-        if self.idiot=="nn":
-            self.model = DQN.load('DQNAgent', env=env)
+        if load_network:
+            self.model = DQN.load('DQNAgent', env=None)
         
     def make_card_choice(self, valid_choices, observation=None):
         if observation:
@@ -213,19 +178,20 @@ class ArtificialRetardation(Player):
         return self.passed
     
     def build_deck(self, booster):
-        loop_flag = True
-        while loop_flag:
+        deck = []
+        while True:
             #clear_screen()
             booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
             #print(f"{self.name} is building his deck")
             self.display_deck()# cpu chooses a random card
             chosen_card = random.choice(booster_pack)
             # deck building checks
-            if sum(card.strength for card in self.deck) + chosen_card.strength <= 38:
-                self.deck.append(chosen_card)
-            elif sum(card.strength for card in self.deck) == 38:
+            if sum(card.strength for card in deck) + chosen_card.strength <= 38:
+                deck.append(chosen_card)
+            elif sum(card.strength for card in deck) == 38:
                 break
             else:
                 #print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
+        return deck
