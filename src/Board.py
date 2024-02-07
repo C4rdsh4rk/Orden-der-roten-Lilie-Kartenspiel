@@ -12,6 +12,7 @@ import src.utils as utils
 #from src.player import Human, ArtificialRetardation
 from src.cards import Booster
 #from src.cards import CardName
+from src.player import ArtificialRetardation
 
 
 class Board(Env): # Env -> gym Environment
@@ -48,6 +49,10 @@ class Board(Env): # Env -> gym Environment
         self.rounds_won1 = 0
         self.rounds_won2 = 0
 
+        player1 = ArtificialRetardation("Trained Monkey", "pc")
+        player2 = ArtificialRetardation("Neural Nutjob", "nn")
+        self.players = player1, player2
+        
         # Setup for game
         self.setup_logging()
         self.initialize_Board()
@@ -118,7 +123,7 @@ class Board(Env): # Env -> gym Environment
     def setup_network_feedback(self) -> None:
         """Sets up the environment specifically for network play, including action and observation spaces."""
         self.action_space = Discrete(39)
-        self.observation_space = Box(low=0, high=38, shape=(234,), dtype=np.float64)
+        self.observation_space = Box(low=0, high=38, shape=(348,), dtype=np.float64)
 
     def close(self): # gym method
         """Cleans up the environment, to be called when the game is closed."""
@@ -136,7 +141,7 @@ class Board(Env): # Env -> gym Environment
             tuple: The initial state of the environment, and an empty info dict.
         """
         self.__init__()
-        return self.get_state()
+        return self.get_state(), {}
 
     def get_valid_choices(self):
         valid_choices = ["{:1d}".format(x) for x in range(len(self.hand1))],["{:1d}".format(x) for x in range(len(self.hand2))]
@@ -153,6 +158,9 @@ class Board(Env): # Env -> gym Environment
         """
         raise NotImplementedError
 
+    def get_row_sum(self, rows, row) -> list[int]:
+        return sum(card.strength for card in rows[row])
+
     def get_state(self): # 38 max hand cards + 76 max board cards +2 turn scores + 1 win points
         """Compiles the current game state into a structured format.
 
@@ -165,6 +173,8 @@ class Board(Env): # Env -> gym Environment
         hand_vector = np.zeros((38,3))
         for i in range(len(self.hand1)):
             hand_vector[i] = self.hand1[i].get_card_vector()
+            if i>38:
+                raise ValueError
 
         board_vector = self.get_board()
 
@@ -172,17 +182,19 @@ class Board(Env): # Env -> gym Environment
         score_vector = np.zeros(6)
 
         i = 0
-        for row in self.players[0].rows:
+        for row in self.half_board:
             if row == Row.EFFECTS:
                 continue
-            score_vector[i] = int(self.players[0].row_score[row])
-            score_vector[i+1] = int(self.players[1].row_score[row])
+            score_vector[i] = int(self.row_score1[row])
+            score_vector[i+1] = int(self.row_score2[row])
             i+=2
-
-        self.state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector])
-        logging.debug("State: %s",self.state)
+        state = np.zeros(348)
+        state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector.flatten()])
+        logging.debug("State: %s",state)
         # Flatten the row scores and card hands into one long vector
-        return self.state
+        #state = state.astype(np.uint32)
+        #print(state.shape) #DEBUG
+        return state.flatten()
 
     def reward_function(self,player):
         """Calculates and returns the reward for a given player's actions.
@@ -204,7 +216,7 @@ class Board(Env): # Env -> gym Environment
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
-        reward += 0.1 * player.turn_score
+        reward += 1 * player.turn_score
 
         if self.passed2:
             reward += 1 + (self.turn_score2 - self.turn_score1)
@@ -232,7 +244,7 @@ class Board(Env): # Env -> gym Environment
         chosen_card = hand[action]
         row = chosen_card.type
         if row == Row.ANY:
-            row = player.make_row_choice(chosen_card)
+            row = player.make_row_choice()
         # add card to row to play it and remove it from the hand
         if h_b==1:
             self.half_board_bottom[row].append(chosen_card)
@@ -312,25 +324,29 @@ class Board(Env): # Env -> gym Environment
 
     def update_row_scores(self):
         """Updates the score for each row based on the current cards in play, affecting the overall game state."""
-    
+
         player1_score = 0
         player2_score = 0
         for row in self.half_board:
-            self.players[0].row_score[row] = self.players[0].get_row_sum(row)
-            self.players[1].row_score[row] = self.players[1].get_row_sum(row)
-            #logging.debug(self.players[0].row_score[row]) # DEBUG
             if row == Row.EFFECTS:
                 continue
-            if self.players[0].get_row_sum(row) >= self.players[1].get_row_sum(row):
-                if self.players[0].get_row_sum(row)==0 and self.players[1].get_row_sum(row)==0:
+            bottom = self.get_row_sum(self.half_board_bottom, row)
+            top = self.get_row_sum(self.half_board_top, row)
+
+            self.row_score1[row] = bottom
+            self.row_score2[row] = top
+
+            if bottom >= top:
+                if bottom==0 and top==0:
                     continue
                 else:
                     player1_score += 1
-            if self.players[0].get_row_sum(row) <= self.players[1].get_row_sum(row):
-                if self.players[0].get_row_sum(row)==0 and self.players[1].get_row_sum(row)==0: # Probably not necessary twice
+            if bottom <= top:
+                if bottom==0 and top==0: # Probably not necessary twice
                     continue
                 else:
                     player2_score += 1
+
         self.turn_score1 = player1_score # How many rows are won by this player at the time the function is called
         self.turn_score2 = player2_score # How many rows are won by this player at the time the function is called
         return
@@ -356,7 +372,7 @@ class Board(Env): # Env -> gym Environment
         logging.debug("\nBoard ended - %s", time_stamp)
         return winner
 
-    def play_round(self,action, players):
+    def play_round(self, action, players):
         """Plays through a single round of the game, with each player taking turns until the round concludes."""
         # Draw hands for each player in the second and third rounds
         if self.round_number>3:
@@ -366,18 +382,18 @@ class Board(Env): # Env -> gym Environment
         if self.round_number > 1:
             valid_choices = self.get_valid_choices()
             if not self.passed1:
-                players[0].make_pass_choice()
+                players[0].make_pass_choice(self.hand1)
                 if not self.passed1:
                     action1 = players[0].make_card_choice(valid_choices[0])
                     self.play_card(self.hand1, action1, players[0], 1)
 
             if not self.passed2:
-                players[1].make_pass_choice()
+                players[1].make_pass_choice(self.hand2)
                 if not self.passed2:
                     action2 = players[1].make_card_choice(valid_choices[1])
                     self.play_card(self.hand2, action2, players[1], 2)
 
-    def step(self, action, players):
-        self.play_round(action, players)
+    def step(self, action):
+        self.play_round(action, self.players)
         info = {}
-        return self.get_state(), self.reward_function(players[0]), self.done, self.done, info # gym required return
+        return self.get_state(), self.reward_function(self.players[0]), self.done, self.done, info # gym required return

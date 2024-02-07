@@ -96,3 +96,14 @@ def
             self.play_round()
         self.display_winner()
         self.reset_Board()
+
+
+    '''
+    while(True):
+        episodes=input(f"How many Boards should be played before training?")
+        episodes=int(episodes)
+        if isinstance(episodes,int) and episodes>0:
+            break
+        else:
+            print(f"Wrong input, try again")
+    '''

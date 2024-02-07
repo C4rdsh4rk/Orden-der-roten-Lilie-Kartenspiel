@@ -4,7 +4,6 @@ from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
-from stable_baselines3 import PPO,DQN
 
 any_row_choice = {
     1: Row.FRONT,
@@ -143,12 +142,11 @@ class ArtificialRetardation(Player):
         else:
             return hand[int(random.choice(valid_choices))-1]
 
-    def make_row_choice(self, card) -> Row:
+    def make_row_choice(self) -> Row:
         return random.choice(list(any_row_choice.values()))
 
-    def make_pass_choice(self) -> bool:
-        if len(self.hand)==0:
-            print(f"{self.name} passed due to no cards to play.")
+    def make_pass_choice(self, hand) -> bool:
+        if len(hand)==0:
             self.passed = True
         else:
             self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]

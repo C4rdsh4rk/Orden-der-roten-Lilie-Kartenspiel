@@ -1,3 +1,6 @@
+# third party imports
+from stable_baselines3 import PPO,DQN
+# local imports
 from src.board import Board
 from src.player import Human,ArtificialRetardation
 
@@ -9,10 +12,10 @@ def main():
    model = DQN.load('DQNAgent', env=env)
    # Make two turns per step; 1/Player
    done = False
-   observation = env.reset()
+   observation, _ = env.reset()
    while not done:
       action, _states = model.predict(observation, deterministic=True)
-      observation, _, _ , done, _ = env.step(action,players)
+      observation, _, _ , done, _ = env.step(action)
       #env.render()
       #env.update()
 

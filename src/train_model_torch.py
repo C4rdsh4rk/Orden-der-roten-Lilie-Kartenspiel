@@ -16,20 +16,12 @@ def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
 
 def main():
     log_path = os.path.join('Training', 'Logs')
-    env = Board(True)
-    check_env(env, warn=True)
-    
-    episodes = 1000
-    '''
-    while(True):
-        episodes=input(f"How many Boards should be played before training?")
-        episodes=int(episodes)
-        if isinstance(episodes,int) and episodes>0:
-            break
-        else:
-            print(f"Wrong input, try again")
-    '''
-    
+    env = Board()
+    #check_env(env, warn=True)
+
+    episodes = 10
+
+    observation, _ = env.reset()
     for episode in range(1, episodes+1):
         done = False
         score = 0 
@@ -37,7 +29,7 @@ def main():
             #env.render()
             action = env.action_space.sample()
             observation, reward, truncated , done, info = env.step(action)
-        #print(f"Episode:{episode} Score:{reward}")
+        print(f"Episode:{episode} Score:{reward}")
         observation = env.reset()
 
     # set up logger
@@ -57,7 +49,7 @@ def main():
     model.learn(total_timesteps=1000)
     model.save('DQNAgent')
     evaluate_policy(model, env, n_eval_episodes=10, render=False)
-    
+
     # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
     # in their name: only these ones affect the action.
     # NOTE: you can retrieve those parameters using model.get_parameters() too
