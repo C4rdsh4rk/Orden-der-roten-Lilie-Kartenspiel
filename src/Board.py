@@ -7,16 +7,17 @@ from gymnasium import Env
 from gymnasium.spaces import Discrete, Box
 import numpy as np
 # local imports
+from src.cards import Card
 from src.row import Row
 import src.utils as utils
 #from src.player import Human, ArtificialRetardation
-from src.cards import Booster
+from src.cards import Booster, EffectCard
 #from src.cards import CardName
 from src.player import ArtificialRetardation
 
 
 class Board(Env): # Env -> gym Environment
-    """Represents the game board environment for a card game.
+    """Represents the game board environment (including state) for a card game.
 
     This class extends the gym Environment to create a customizable card game environment
     with options for human and AI players, logging, and network play.
@@ -32,27 +33,31 @@ class Board(Env): # Env -> gym Environment
             Row.SUPPORT: [],
             Row.EFFECTS: []
         }
-        self.empty_deck = []
-        self.empty_hand = []
-
         # Player attributes
-        self.reward1 = 0
-        self.reward2 = 0
-        self.turn_score1 = 0
-        self.turn_score2 = 0
-        self.row_score1 = {}
-        self.row_score2 = {}
-        self.turn_number1 = 0
-        self.turn_number2 = 0
-        self.passed1 = False
-        self.passed2 = False
-        self.rounds_won1 = 0
-        self.rounds_won2 = 0
-
-        player1 = ArtificialRetardation("Trained Monkey", "pc")
-        player2 = ArtificialRetardation("Neural Nutjob", "nn")
-        self.players = player1, player2
-        
+        self.player_states = {
+            "top_player":{
+                "name": "",
+                "half_board": self.half_board.copy(),
+                "passed": False,
+                "deck": [],
+                "hand": [],
+                "graveyard": [],
+                "reward": 0,
+                "current_rows_won": 0,
+                "rounds_won": 0
+            },
+            "bottom_player":{
+                "name": "",
+                "half_board": self.half_board.copy(),
+                "passed": False,
+                "deck": [],
+                "hand": [],
+                "graveyard": [],
+                "reward": 0,
+                "current_rows_won": 0,
+                "rounds_won": 0
+            }
+        }
         # Setup for game
         self.setup_logging()
         self.initialize_Board()
@@ -60,65 +65,58 @@ class Board(Env): # Env -> gym Environment
 
     def clear_deck(self):
         """Clears the game board"""
-        self.deck1 = self.empty_deck.copy()
-        self.deck2 = self.empty_deck.copy()
+        self.player_states["top_player"]["deck"] = []
+        self.player_states["bottom_player"]["deck"] = []
         return
 
     def clear_board(self):
         """Clears the game board"""
-        self.half_board_top = self.half_board.copy()
-        self.half_board_bottom = self.half_board.copy()
+        self.player_states["top_player"]["half_board"] = self.half_board.copy()
+        self.player_states["bottom_player"]["half_board"] = self.half_board.copy()
         return
     
     def clear_hands(self):
         """Clears the hands"""
-        self.hand1 = self.empty_hand.copy()
-        self.hand2 = self.empty_hand.copy()
+        self.player_states["top_player"]["hand"] = []
+        self.player_states["bottom_player"]["hand"] = []
         return
 
-    def get_board(self):
-        """Returns the game board as a vector with shape (76,3)
-                Empty card slots will be filled with zeros
+    def get_board_vector(self):
         """
-        board_vector = np.zeros((76,3))
-        for row, cards_in_row in self.half_board_top.items():
-            for card in cards_in_row:
-                card_vector = card.get_card_vector()  # Assuming get_card_vector method returns the vector representation
-                board_vector[row.value] += card_vector
-        for row, cards_in_row in self.half_board_bottom.items():
-            for card in cards_in_row:
-                card_vector = card.get_card_vector()  # Assuming get_card_vector method returns the vector representation
-                board_vector[row.value] += card_vector
-        
+        Returns the game board as a vector with shape (76,3), empty card slots will be filled with zeros.
+        (76, 3) since the maximal state can be with 76 cards of value 1.
+        """
+        cards_p1 = [card.get_card_vector() for card in self.player_states["top_player"]["half_board"]]
+        cards_p2 = [card.get_card_vector() for card in self.player_states["top_player"]["half_board"]]
+        # TODO add constant length
+        board_vector = np.ndarray(cards_p1 + cards_p2)
         return board_vector
+    
+    def get_hands_vector(self):
+        pass  # np.zeros((38,3))
+
+    def get_score_vector(self):
+        pass
 
     def setup_logging(self): # Possible Problem: Now creates log file for every individual game (might cause problems with training sessions)
-        """Sets up logging for the game, creating a log file with a unique timestamp."""
-    
+        """
+        Sets up logging for the game, creating a log file with a unique timestamp.
+        """
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/' + str(time_stamp) + '.log', filemode='w', format='%(message)s')
         self.log_time_stamp = time.strftime("%d/%m/%Y - %H:%M:%S", time.localtime())
 
     def initialize_Board(self):
-        """Initializes the board and players for the start of the game."""
+        """
+        Initializes the board and players for the start of the game.
+        """
         self.clear_deck()  # Generate empty player decks
         self.clear_board() # Generate empty player boards
         self.clear_hands() # Generate empty player hands
-        utils.clear_screen()
         self.round_number = 1
 
-    def initialize_decks(self) -> None:
-        """Initializes decks and hands for all players in the game.
-
-        Args:
-            players (list): The list of players who will have their decks initialized.
-        """
-        booster_instance = Booster()
-        self.deck1 = self.players[0].build_deck(booster_instance)
-        self.hand1 = self.draw_cards_to_hand(self.hand1, self.deck1, 10, True) # draw_cards_to_hand(self, hand, deck, num_cards=2,shuffle=False):
-        self.deck2 = self.players[1].build_deck(booster_instance)
-        self.hand2 = self.draw_cards_to_hand(self.hand2, self.deck2, 10, True)
-        logging.debug("Players drew 10 cards from their shuffled deck.")
+    def set_deck(self, deck: list[Card], player: str) -> None:
+        self.player_states[player]["deck"] = deck
 
     def setup_network_feedback(self) -> None:
         """Sets up the environment specifically for network play, including action and observation spaces."""
@@ -143,8 +141,8 @@ class Board(Env): # Env -> gym Environment
         self.__init__()
         return self.get_state(), {}
 
-    def get_valid_choices(self):
-        valid_choices = ["{:1d}".format(x) for x in range(len(self.hand1))],["{:1d}".format(x) for x in range(len(self.hand2))]
+    def get_valid_choices(self, player):
+        valid_choices = list(range(len(self.player_states[player]["hand"])))
         return valid_choices
         
     def get_ar_action_meaning(self, ar_action):
@@ -158,10 +156,10 @@ class Board(Env): # Env -> gym Environment
         """
         raise NotImplementedError
 
-    def get_row_sum(self, rows, row) -> list[int]:
-        return sum(card.strength for card in rows[row])
+    def get_row_sum(self, player, row) -> list[int]:
+        return sum(card.strength for card in self.player_states[player]["half_board"][row])
 
-    def get_state(self): # 38 max hand cards + 76 max board cards +2 turn scores + 1 win points
+    def get_state(self): # 38 max hand cards + 76 max board cards + 2 turn scores + 1 win points
         """Compiles the current game state into a structured format.
 
         This includes the hand vector, board vector, and score vector representing
@@ -170,24 +168,9 @@ class Board(Env): # Env -> gym Environment
         Returns:
             np.array: A numpy array representing the current state of the game.
         """
-        hand_vector = np.zeros((38,3))
-        for i in range(len(self.hand1)):
-            hand_vector[i] = self.hand1[i].get_card_vector()
-            if i>38:
-                raise ValueError
-
-        board_vector = self.get_board()
-
-        self.update_row_scores()
-        score_vector = np.zeros(6)
-
-        i = 0
-        for row in self.half_board:
-            if row == Row.EFFECTS:
-                continue
-            score_vector[i] = int(self.row_score1[row])
-            score_vector[i+1] = int(self.row_score2[row])
-            i+=2
+        hand_vector = self.get_hands_vector()
+        board_vector = self.get_board_vector()
+        score_vector = self.get_score_vector()
         state = np.zeros(348)
         state = np.concatenate([hand_vector.flatten(), board_vector.flatten(), score_vector.flatten()])
         logging.debug("State: %s",state)
@@ -196,7 +179,7 @@ class Board(Env): # Env -> gym Environment
         #print(state.shape) #DEBUG
         return state.flatten()
 
-    def reward_function(self,player):
+    def reward_function(self, player):
         """Calculates and returns the reward for a given player's actions.
 
         Args:
@@ -212,27 +195,28 @@ class Board(Env): # Env -> gym Environment
 
         # Reward for winning a round
         if player.rounds_won > 0:
-            reward += win_reward * (self.rounds_won1 - self.rounds_won2)
+            reward += win_reward * (self.player_states[player] - self.player_states[""])
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
         reward += 1 * player.turn_score
 
-        if self.passed2:
+        if self.player_states["top_player"]["passed"]:
             reward += 1 + (self.turn_score2 - self.turn_score1)
 
         player.reward = reward
         logging.debug("REWARD: %s %s",player.name, player.reward)
         return player.reward
 
-    def draw_cards_to_hand(self, hand, deck, num_cards=2,shuffle=False):
+    def draw_cards_to_hand(self, player, num_cards=2, shuffle=False) -> None:
         """Allows a player to draw a specified number of cards into their hand.
         Args:
-            hand: The player who will draw cards.
-            deck:
+            player: The player who will draw cards.
             num_cards (int, optional): The number of cards to draw. Defaults to 2.
             shuffle (boolean, optional)
         """
+        deck = self.player_states[player]["deck"]
+        hand = self.player_states[player]["hand"]
         if shuffle:
             random.shuffle(deck)
         # Draw cards from the deck
@@ -240,136 +224,87 @@ class Board(Env): # Env -> gym Environment
         # Remove drawn cards from the deck
         deck = deck[num_cards:]
 
-    def play_card(self, hand, action, player, h_b) -> None:
-        chosen_card = hand[action]
-        row = chosen_card.type
-        if row == Row.ANY:
-            row = player.make_row_choice()
-        # add card to row to play it and remove it from the hand
-        if h_b==1:
-            self.half_board_bottom[row].append(chosen_card)
-        else:
-            self.half_board_top[row].append(chosen_card)
-
-        card_index = hand.index(chosen_card)
-        hand = hand[:card_index] + hand[card_index+1:]
-        return
-
-    def calculate_round_result(self) -> None:
-        """Logs the result of the current round, including the winner and updated scores."""
+    def end_round(self):
+        # update round scores
         
+        # update round ticker
+        self.round_number += 1
+        # update graveyard
+        pass
+
+    def play_card(self, player, card_index, row) -> None:
+        """
+        Method to player a card into a given round
+
+        Args:
+            player (str): identifier of the player
+            card (int): index of the card that is played (index in hand)
+            row (Row): row in which the card is played
+        """
+        hand = self.player_states[player]["hand"]
+        played_card = hand[card_index]
+        # special case if effect card
+        if isinstance(played_card, EffectCard):
+            played_card.execute_effect(self)
+        else:
+            # add it to the players board
+            self.player_states[player]["half_board"][row] += hand[card_index]
+        # remove card from hand
+        hand = hand[:card_index] + hand[card_index+1:]
+
+    def log_round_result(self) -> None:
+        """Logs the result of the current round, including the winner and updated scores."""
+        p1 = self.player_states["top_player"]
+        p2 = self.player_states["bottom_player"]
         winner = ""
-        if self.turn_score1 > self.turn_score2:
-            winner = self.players[0].name
-        elif self.turn_score1 < self.turn_score2:
-            winner = self.players[1].name
+        if p1["current_rows_won"] > p2["current_rows_won"]:
+            winner = p1["name"]
+        elif p1["current_rows_won"] < p2["current_rows_won"]:
+            winner = p2["name"]
         else:
             logging.debug("The round was a draw, one point to both players!")
         if winner:
             logging.debug("\n--- Player {winner} won round {self.round_number} ---")
         logging.debug("Current Round Score: %s : %s, %s : %s",
-                        self.players[0].name,
-                        self.rounds_won1,
-                        self.players[1].name,
-                        self.rounds_won2)
-
-    def resolve_effect(self,player,card):
-        """Applies the effect of a special card played by a player.
-
-        Args:
-            player (Player): The player who played the card.
-            card (Card): The card whose effect needs to be resolved.
-        """
-        if card.name=="DRAW1":
-            player.draw_cards_to_hand(1)
-        elif card.name=="DRAW2":
-            player.draw_cards_to_hand(2)
-        else:
-            logging.debug("unknown effect, bro")
-            raise NotImplementedError
-
-    def row_sort_order(self,row_card_tuple: tuple):
-        """Determines the sorting order for cards in a row.
-
-        Args:
-            row_card_tuple (tuple): A tuple containing a row identifier and its associated card.
-
-        Returns:
-            int: A numeric value representing the sort order based on the row type.
-        """
-        row, _ = row_card_tuple
-
-        if row == Row.SUPPORT:
-            return 3
-        elif row == Row.WISE:
-            return 2
-        elif row == Row.FRONT:
-            return 1
-        return 0
+            p1["name"],
+            p1["rounds_won"],
+            p2["name"],
+            p2["rounds_won"]
+        )
 
     def render(self): # gym required method
         pass
 
-    def update_win_points(self):
-        """Updates the win points for each player based on the current round's results.
+    def get_row_scores(self) -> tuple[int, int]:
+        """
+        Gets the score for each row based on the current cards in play, affecting the overall game state.
 
         Returns:
-            list: A list containing the updated rounds won by each player and a placeholder value.
+            tuple[dict, dict]: tuple that contains the scores for both players, (top, bottom)
         """
-        if self.turn_score1 >= self.turn_score2:
-            self.rounds_won1+=1
-        if self.turn_score2 >= self.turn_score1:
-            self.rounds_won2+=1
-        return [self.rounds_won1, self.rounds_won2, 0]
+        top_rows = [row for row in self.player_states["top_player"]["half_board"] if row != Row.EFFECTS]
+        row_scores_top = {row: sum(card.strength for card in row) for row in top_rows}
 
-    def update_row_scores(self):
-        """Updates the score for each row based on the current cards in play, affecting the overall game state."""
+        bottom_rows = [row for row in self.player_states["bottom_player"]["half_board"] if row != Row.EFFECTS]
+        row_scores_bottom = {row: sum(card.strength for card in row) for row in bottom_rows}
+        return row_scores_top, row_scores_bottom
 
-        player1_score = 0
-        player2_score = 0
-        for row in self.half_board:
-            if row == Row.EFFECTS:
-                continue
-            bottom = self.get_row_sum(self.half_board_bottom, row)
-            top = self.get_row_sum(self.half_board_top, row)
+    def get_winner(self) -> list[str]:
+        """
+        Determines and the winner of the game based on the final scores.
 
-            self.row_score1[row] = bottom
-            self.row_score2[row] = top
+        Returns:
+            List[str]: list of winning player identifiers (could be one or two, if draw)
+        """
 
-            if bottom >= top:
-                if bottom==0 and top==0:
-                    continue
-                else:
-                    player1_score += 1
-            if bottom <= top:
-                if bottom==0 and top==0: # Probably not necessary twice
-                    continue
-                else:
-                    player2_score += 1
-
-        self.turn_score1 = player1_score # How many rows are won by this player at the time the function is called
-        self.turn_score2 = player2_score # How many rows are won by this player at the time the function is called
-        return
-
-    def check_winner(self):
-        """Determines and logs the winner of the game based on the final scores."""
-
-        winner = ""
-        reward = 0
-        if self.rounds_won1 < self.rounds_won2:
-            winner = self.players[1].name
-            reward = self.reward2
-        elif self.rounds_won1 > self.rounds_won2:
-            winner = self.players[0].name
-            reward = self.reward1
-        if winner:
-            logging.debug("%s won the Board!", winner)
-        else:
-            logging.debug("Draw - No one won the Board")
-        time_stamp = time.strftime("%d/%m/%Y, %H:%M:%S", time.localtime())
-        logging.debug("%s won the Board!", winner)
-        logging.debug("Final reward %s (to compare with NN)", reward)
-        logging.debug("\nBoard ended - %s", time_stamp)
+        winner = []
+        rounds_top_player_won = self.player_states["top_player"]["rounds_won"]
+        rounds_bottom_player_won = self.player_states["top_player"]["rounds_won"]
+        
+        if rounds_top_player_won <= rounds_bottom_player_won:
+            winner += ["top_player"]
+        if rounds_top_player_won >= rounds_bottom_player_won:
+            winner += ["bottom_player"]
         return winner
 
     def play_round(self, action, players):
