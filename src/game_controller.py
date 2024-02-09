@@ -25,18 +25,19 @@ class Game_Controller(Env):
         self.observation_space = spaces.Box(low=0, high=50, dtype=np.float32)
         # Initialize state
         self._state = None
+        self.done = False
         self.coin_flip = self.get_coin_flip()
         self.turn_indicator = self.coin_flip
         if training:
             self.players =  [
                 ArtificialRetardation("Trained Monkey"),
                 ArtificialRetardation("Clueless Robot")
-            ]
+                ]
         else:
             self.players =  [
                 ArtificialRetardation("Clueless Robot"),
                 Human("IQ Test Subject")
-            ]
+                ]
         if not self.coin_flip:
             self.players.reverse()
 
@@ -44,7 +45,7 @@ class Game_Controller(Env):
         self.rewards = {
             True : 0,
             False : 0
-        }
+            }
 
     def step(self, action):
         """Update the environment based on the provided action and return the new observation, reward, etc.
@@ -86,11 +87,11 @@ class Game_Controller(Env):
             self.board.end_round()
 
         truncated = False
-        done = self.board.game_ended()
+        self.done = self.board.game_ended()
         observation = self.get_state()
         reward = self.get_reward(player)
 
-        return observation, reward, truncated , done, info
+        return observation, reward, truncated , self.done, info
 
     def reset(self, seed=None, options=None):
         """Reset the environment to its initial state and returns the starting observation.

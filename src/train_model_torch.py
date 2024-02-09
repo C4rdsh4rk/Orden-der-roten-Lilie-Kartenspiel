@@ -4,9 +4,6 @@ import gymnasium as gym
 
 from src.game_controller import Game_Controller
 
-def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
-    """Mutate parameters by adding normal noise to them"""
-    return dict((name, param + th.randn_like(param)) for name, param in params.items())
 
 def main():
     log_path = os.path.join('Training', 'Logs')
