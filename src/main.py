@@ -1,23 +1,32 @@
 # third party imports
+import torch as th
+import os
 from stable_baselines3 import PPO,DQN
+from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.logger import configure
 # local imports
-from src.board import Board
-from src.player import Human,ArtificialRetardation
+from src.game_controller import Game_Controller
 
 def main():
-   env = Board()
-   player1 = Human("Test Subject", "human")
-   player2 = ArtificialRetardation("Neural Nutjob", "nn")
-   players = player1, player2
-   model = DQN.load('DQNAgent', env=env)
-   # Make two turns per step; 1/Player
-   done = False
+   env = Game_Controller()
    observation, _ = env.reset()
-   while not done:
-      action, _states = model.predict(observation, deterministic=True)
-      observation, _, _ , done, _ = env.step(action)
-      #env.render()
-      #env.update()
+   check_env(env, warn=True)
+
+   episodes = 10
+   observation, _ = env.reset()
+   for episode in range(1, episodes+1):
+      done = False
+      score = 0 
+      while not done:
+            env.render()
+            action = env.action_space.sample()
+            observation, reward, truncated , done, info = env.step(action)
+      print(f"Episode:{episode} Score:{reward}")
+      observation = env.reset()
+
+
 
 if __name__ == "__main__":
    main()

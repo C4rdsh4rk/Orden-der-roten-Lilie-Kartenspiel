@@ -4,6 +4,8 @@ from colorama import Fore
 from src.row import Row
 from src.utils import get_user_input
 from src.cards import Card
+from typing import Callable
+
 
 any_row_choice = {
     1: Row.FRONT,
@@ -13,12 +15,6 @@ any_row_choice = {
 class Player(ABC):
     def __init__(self, name):
         self.name = name
-        self.reward = 0
-        self.turn_score = 0
-        self.turn_number = 0
-        self.passed = False
-        self.rounds_won = 0
-        self.row_score = {}
 
     def display_deck(self,deck):
         #clear_screen()
@@ -40,7 +36,7 @@ class Player(ABC):
         """
         raise NotImplementedError
 
-    def make_card_choice(self, valid_choices: list) -> Card:
+    def make_card_choice(self, valid_actions: list, action=None) -> Card:
         """
         Interface function that must return exactly one card that is played by the player.
         The card must be in the valid_choices.
@@ -65,30 +61,26 @@ class Player(ABC):
         raise NotImplementedError
 
 class Human(Player):
-    def make_card_choice(self, valid_choices):
-        valid_choices = [str(int(x)+1) for x in valid_choices] # User friendly numbers
-        self.display_hand()
-        return self.hand[int(get_user_input(
-            "Choose a card from your hand:",
-            valid_choices
-        ))-1]
-    
-    def make_row_choice(self, card) -> Row:
-        return any_row_choice[
-            int(get_user_input(
-                "Chose any row for your card",
-                [str(row_number) for row_number in any_row_choice.keys()]
-            ))
-        ]
-    
-    def make_pass_choice(self) -> bool:
-        self.passed = bool(int(get_user_input(
-            "Pass? 0 - No, 1 - Yes: ",
-            ["0", "1"]
-        )))
-        return self.passed
-    
-    
+    def __init__(self, name: str, get_user_input: Callable):
+        super().__init__(name)
+        self.get_user_input = get_user_input
+
+    def make_choice(self, valid_actions, action=None):
+        valid_actions = [x+1 for x in valid_actions] # User friendly numbers
+        valid_actions += [0]
+        if len(valid_actions)==1:
+            monkey_input = 0
+        else:
+            monkey_input = self.get_user_input("Choose a card from your hand or pass (with 0):", valid_actions)
+        return monkey_input
+
+    def make_row_choice(self, card, row_choices: list[Row]) -> Row:
+        monkey_input = self.get_user_input(
+            "Chose any row for your card",
+            [str(row_number) for row_number, _ in enumerate(row_choices)]
+        )
+        return row_choices[monkey_input]
+
     def build_deck(self, booster):
         deck = []
         loop_flag = True
@@ -135,14 +127,14 @@ class ArtificialRetardation(Player):
     def __init__(self, name):
         super().__init__(name)
 
-    def make_card_choice(self, hand, valid_choices, action=None):
+    def make_card_choice(self, valid_choices, action=None):
         if action:
-            return hand[action]
+            return action
         else:
-            return hand[int(random.choice(valid_choices))-1]
+            return int(random.choice(valid_choices))-1 # Monke
 
-    def make_row_choice(self) -> Row:
-        return random.choice(list(any_row_choice.values()))
+    def make_row_choice(self, card, row_choices: list[Row]) -> Row:
+        return random.choice(list(row_choices.values()))
 
     def make_pass_choice(self, hand) -> bool:
         if len(hand)==0:

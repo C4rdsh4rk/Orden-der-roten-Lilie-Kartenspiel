@@ -298,7 +298,7 @@ class Board:
         """
         top_player_won = self.player_states[self._get_player_identifier(False)]["rounds_won"] >= 2
         bottom_player_won = self.player_states[self._get_player_identifier(True)]["rounds_won"] >= 2
-        return self.round_number >= 3 or top_player_won or bottom_player_won
+        return self.round_number >= 4 or top_player_won or bottom_player_won
 
     def get_row_score(self, bottom_player: bool, row: Row) -> int:
         """

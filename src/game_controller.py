@@ -5,7 +5,7 @@ from gymnasium import Env, spaces
 
 # local imports
 from src.player import Human,ArtificialRetardation
-from src.board import Board
+from src.board import Board, Row
 
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
@@ -16,7 +16,7 @@ class Game_Controller(Env):
         action_space (gym.spaces.Discrete): The space of possible actions, represented as an integer index corresponding to a card in the player's hand.
         observation_space (gym.spaces.Box): The space of possible observations, representing the state of the game board and players' hands."""
 
-    def __init__(self):
+    def __init__(self, training = False):
         """Initialize the environment with a random seed and initial state."""
 
         super().__init__()
@@ -26,8 +26,20 @@ class Game_Controller(Env):
         # Initialize state
         self._state = None
         self.coin_flip = self.get_coin_flip()
-        self.players =  ArtificialRetardation("Trained Monkey"),\
-                        ArtificialRetardation("Clueless Robot") 
+        self.turn_indicator = self.coin_flip
+        if training:
+            self.players =  [
+                ArtificialRetardation("Trained Monkey"),
+                ArtificialRetardation("Clueless Robot")
+            ]
+        else:
+            self.players =  [
+                ArtificialRetardation("Clueless Robot"),
+                Human("IQ Test Subject")
+            ]
+        if not self.coin_flip:
+            self.players.reverse()
+
         self.board = Board(self.players[0].name, self.players[1].name)
         self.rewards = {
             True : 0,
@@ -48,33 +60,36 @@ class Game_Controller(Env):
             and a dictionary with additional information."""
 
         info = {}
-        player = True
+        # Note: if conflip, human begins
+        bottom_player = self.coin_flip
 
-        if self.coin_flip:
-            self.board.get_hand(player)
-            card_index = action
-            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
-            player = not player            
-            self.board.get_hand(player)
-            card_index = action
-            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+        for player in self.players:
+            # we have already passed
+            if self.board.has_passed(bottom_player):
+                continue
 
-        else:
-            player = not player
-            self.board.get_hand(player)
-            card_index = action
-            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
-            player = not player
-            self.board.get_hand(player)
-            card_index = action
-            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
-
-
+            card_index = player.make_choice(self.board.get_valid_choices(bottom_player),
+                                            action=action)
+            # we are passing this turn
+            if card_index == 0:
+                self.board.pass_round(bottom_player)
+                continue
+            # otherwise play card
+            played_card = self.board.get_hand(bottom_player)[card_index]
+            played_row = played_card.type
+            if played_row == Row.ANY:
+                played_row = player.make_row_choice(played_card, [Row.FRONT, Row.WISE, Row.SUPPORT])
+            self.board.play_card(bottom_player, card_index, played_row) # (bool, card_index -> int, row (Enum))
+            # switch player for next turn
+            bottom_player = not bottom_player
+        if self.board.has_passed(True) and self.board.has_passed(False):
+            self.board.end_round()
 
         truncated = False
         done = self.board.game_ended()
         observation = self.get_state()
-        reward = self.get_reward(self.players[0])
+        reward = self.get_reward(player)
+
         return observation, reward, truncated , done, info
 
     def reset(self, seed=None, options=None):
@@ -113,8 +128,8 @@ class Game_Controller(Env):
 
         state = np.zeros((465,))
 
-        top_board = np.array(self.board.player_states["top_player"]["half_board"]).flatten()
-        bot_board = np.array(self.board.player_states["bottom_player"]["half_board"]).flatten()
+        top_board = np.array(list(self.board.player_states["top_player"]["half_board"].values())).flatten() # TODO implement get method
+        bot_board = np.array(list(self.board.player_states["bottom_player"]["half_board"].values())).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
         row_scores = np.concatenate(self.board.get_row_scores(True).flatten(),
                                     self.board.get_row_scores(False).flatten())
@@ -135,13 +150,13 @@ class Game_Controller(Env):
         for i,entry in enumerate(row_scores):
             state[i+skip] = entry
 
-
         state[-3] = self.board.round_number             # 462
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
-        
+
         self._state = state
-        return self._state 
+        return self._state
+
     def get_reward(self, player):
         """Calculates and returns the reward for a given player's actions.
 

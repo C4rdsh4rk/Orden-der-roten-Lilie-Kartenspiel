@@ -1,12 +1,6 @@
 from typing import Dict
 import gymnasium as gym
-import torch as th
-import os
-from stable_baselines3 import PPO,DQN
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.logger import configure
+
 
 from src.game_controller import Game_Controller
 
@@ -17,7 +11,7 @@ def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
 def main():
     log_path = os.path.join('Training', 'Logs')
     env = Game_Controller()
-    #check_env(env, warn=True)
+    check_env(env, warn=True)
 
     episodes = 10
 
