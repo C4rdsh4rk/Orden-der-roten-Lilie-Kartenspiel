@@ -1,6 +1,8 @@
 # third party imports
-from gymnasium import Env, spaces
+import random
 import numpy as np
+from gymnasium import Env, spaces
+
 # local imports
 from src.player import Human,ArtificialRetardation
 from src.board import Board
@@ -13,27 +15,88 @@ class game_controller(Env):
         self.observation_space = spaces.Box(low=0, high=50, dtype=np.float32)
         # Initialize state
         self._state = None
+        self.coin_flip = self.get_coin_flip()
         self.players = ArtificialRetardation("Trained Monkey"), ArtificialRetardation("Clueless Robot") 
-        self.board = Board()
+        self.board = Board(self.players[0].name, self.players[1].name)
 
     def step(self, action):
         info = {}
-        card_index = 
-        self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+        player = True
+
+        if self.coin_flip:
+            self.board.get_hand(player)
+            card_index = action
+            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+            player = not player            
+            self.board.get_hand(player)
+            card_index = action
+            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+
+        else:
+            player = not player
+            self.board.get_hand(player)
+            card_index = action
+            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+            player = not player
+            self.board.get_hand(player)
+            card_index = action
+            self.board.play_card(player, card_index, row) # (bool, card_index -> int, row (Enum))
+
+
+
         truncated = False
         done = self.board.update_board()
         observation = self.board.get_state()
         reward = self.get_reward(self.players[0])
         return observation, reward, truncated , done, info
 
-    def reset(self,seed=None):
+    def reset(self, seed=None, options={}):
+        """Reset the environment to its initial state and returns the starting observation.
+        
+        Args:
+            seed (int, optional): Seed for randomizing the board. Defaults to None.
+        
+        Returns:
+            np.array: The starting observation.
+        """
         # Reset the environment to its initial state
-        self._state = self.board.get_state()
+        super().reset(seed=seed)
         self.board.reset()
+        self._state = self.get_state()
         return self._state
 
     def render(self, mode='human'):
         pass  # Render the environment for visualization
+
+    def get_state(self):
+        state = np.zeros((461,))
+        
+        top_board = np.array(self.board.player_states["top_player"]["half_board"]).flatten()
+        bot_board = np.array(self.board.player_states["bottom_player"]["half_board"]).flatten()
+        hand = np.array(self.board.get_hand(False)).flatten()
+        row_scores = np.concatenate(self.board.get_row_scores(True).flatten(), self.board.get_row_scores(False).flatten())
+        graveyard = 
+        skip = 0
+        for i in range(len(bot_board)):
+            state[i] = bot_board[i]
+        skip += 114 # 38 * card vector of 3
+        for i in range(len(top_board)):
+            state[i+skip] = top_board[i]
+        skip += 114
+        for i in range(len(hand)):
+            state[i+skip] = hand[i]
+        skip += 114
+        for i in range(len(graveyard)):
+            state[i+skip] = graveyard[i]
+        skip += 114
+        for i in range(len(row_scores)):
+            state[i+skip] = row_scores[i]
+        
+        state[-2] = self.board.get_rounds_won(True) # 462
+        state[-1] = self.board.get_rounds_won(False) # 463
+
+        self._state = state
+        return self._state # Board 76 * 3 + Hand 38 * 3 + Graveyard 38 * 3 + turn score 6 + rounds won 2 = 464
 
     def get_reward(self, player):
         """Calculates and returns the reward for a given player's actions.
@@ -62,3 +125,6 @@ class game_controller(Env):
 
         player.reward = reward
         return player.reward
+    
+    def get_coin_flip(self):
+        return bool(random.getrandbits(1))
