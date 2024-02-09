@@ -26,7 +26,8 @@ class Game_Controller(Env):
         # Initialize state
         self._state = None
         self.coin_flip = self.get_coin_flip()
-        self.players = ArtificialRetardation("Trained Monkey"), ArtificialRetardation("Clueless Robot") 
+        self.players =  ArtificialRetardation("Trained Monkey"),\
+                        ArtificialRetardation("Clueless Robot") 
         self.board = Board(self.players[0].name, self.players[1].name)
         self.rewards = {
             True : 0,
@@ -87,9 +88,10 @@ class Game_Controller(Env):
         """
         # Reset the environment to its initial state
         super().reset(seed=seed)
+        info = {}
         self.board.reset()
         self._state = self.get_state()
-        return self._state
+        return self._state, info
 
     def render(self, mode='human'):
         """Render the environment for visualization."""
@@ -100,7 +102,16 @@ class Game_Controller(Env):
     
         Returns:
         np.array: The current state of the environment as a vector."""
-        state = np.zeros((464,))
+
+        # Board 76 * 3 +
+        # Hand 38 * 3 +
+        # Graveyard 38 * 3 +
+        # turn score 6 +
+        # rounds won 2 +
+        # current round 1
+        # = 465
+
+        state = np.zeros((465,))
 
         top_board = np.array(self.board.player_states["top_player"]["half_board"]).flatten()
         bot_board = np.array(self.board.player_states["bottom_player"]["half_board"]).flatten()
@@ -124,12 +135,13 @@ class Game_Controller(Env):
         for i,entry in enumerate(row_scores):
             state[i+skip] = entry
 
-        state[-2] = self.board.get_rounds_won(True) # 462
-        state[-1] = self.board.get_rounds_won(False) # 463
 
+        state[-3] = self.board.round_number             # 462
+        state[-2] = self.board.get_rounds_won(True)     # 463
+        state[-1] = self.board.get_rounds_won(False)    # 464
+        
         self._state = state
-        return self._state # Board 76 * 3 + Hand 38 * 3 + Graveyard 38 * 3 + turn score 6 + rounds won 2 = 464
-
+        return self._state 
     def get_reward(self, player):
         """Calculates and returns the reward for a given player's actions.
 
@@ -146,7 +158,8 @@ class Game_Controller(Env):
 
         # Reward for winning a round
         if self.board.player_states[player]["rounds_won"] > 0:
-            reward += win_reward * (self.board.player_states[player]["rounds_won"] - self.board.player_states[not player]["rounds_won"])
+            reward += win_reward * (self.board.player_states[player]["rounds_won"]
+                                    - self.board.player_states[not player]["rounds_won"])
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing

@@ -8,7 +8,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.logger import configure
 
-from src.board import Board
+from src.game_controller import Game_Controller
 
 def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
     """Mutate parameters by adding normal noise to them"""
@@ -16,7 +16,7 @@ def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
 
 def main():
     log_path = os.path.join('Training', 'Logs')
-    env = Board()
+    env = Game_Controller()
     #check_env(env, warn=True)
 
     episodes = 10
@@ -33,7 +33,7 @@ def main():
         observation = env.reset()
 
     # set up logger
-    new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
+    new_logger = configure(log_path, ["stdout", "csv", "tensorGame_Controller"])
 
     model = DQN("MlpPolicy",
                 env,
@@ -41,7 +41,7 @@ def main():
                 #policy_kwargs={"net_arch": [32]},
                 #seed=0,
                 learning_rate=0.05,
-                verbose=1) #, tensorboard_log=log_path) # alias of DQNPolicy # PPO
+                verbose=1) #, tensorGame_Controller_log=log_path) # alias of DQNPolicy # PPO
     # Set new logger
     model.set_logger(new_logger)
     # Use traditional actor-critic policy gradient updates to
