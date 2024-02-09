@@ -11,10 +11,9 @@ any_row_choice = {
     3: Row.SUPPORT
 }
 class Player(ABC):
-    def __init__(self, name, idiot):
+    def __init__(self, name):
         self.name = name
         self.reward = 0
-        self.idiot = idiot # Human, PC or NN
         self.turn_score = 0
         self.turn_number = 0
         self.passed = False
@@ -133,8 +132,8 @@ class Human(Player):
         return deck
 
 class ArtificialRetardation(Player):
-    def __init__(self, name, idiot):
-        super().__init__(name, idiot)
+    def __init__(self, name):
+        super().__init__(name)
 
     def make_card_choice(self, hand, valid_choices, action=None):
         if action:
