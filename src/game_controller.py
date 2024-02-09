@@ -7,8 +7,18 @@ from gymnasium import Env, spaces
 from src.player import Human,ArtificialRetardation
 from src.board import Board
 
-class game_controller(Env):
+class Game_Controller(Env):
+    """A gym-like environment that simulates a card game between two players.
+    
+    The game is played on a board with 4 rows and a hand of 10 cards for each player. The objective is to score points by playing cards in a specific order, combining their elements. Actions are performed by playing cards from the hand, which are removed from the hand after being used. The game ends when all cards have been played or a certain number of rounds has been won.
+    
+    Attributes:
+        action_space (gym.spaces.Discrete): The space of possible actions, represented as an integer index corresponding to a card in the player's hand.
+        observation_space (gym.spaces.Box): The space of possible observations, representing the state of the game board and players' hands."""
+
     def __init__(self):
+        """Initialize the environment with a random seed and initial state."""
+
         super().__init__()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
@@ -18,8 +28,24 @@ class game_controller(Env):
         self.coin_flip = self.get_coin_flip()
         self.players = ArtificialRetardation("Trained Monkey"), ArtificialRetardation("Clueless Robot") 
         self.board = Board(self.players[0].name, self.players[1].name)
+        self.rewards = {
+            True : 0,
+            False : 0
+        }
 
     def step(self, action):
+        """Update the environment based on the provided action and return the new observation, reward, etc.
+    
+        Args:
+            action (int): The index of the card to play.
+            
+        Returns:
+            tuple: A tuple containing the new observation, 
+            the reward obtained by the player, 
+            a boolean indicating if the episode has been truncated, 
+            a boolean indicating whether the episode has ended, 
+            and a dictionary with additional information."""
+
         info = {}
         player = True
 
@@ -45,12 +71,12 @@ class game_controller(Env):
 
 
         truncated = False
-        done = self.board.update_board()
-        observation = self.board.get_state()
+        done = self.board.game_ended()
+        observation = self.get_state()
         reward = self.get_reward(self.players[0])
         return observation, reward, truncated , done, info
 
-    def reset(self, seed=None, options={}):
+    def reset(self, seed=None, options=None):
         """Reset the environment to its initial state and returns the starting observation.
         
         Args:
@@ -66,15 +92,21 @@ class game_controller(Env):
         return self._state
 
     def render(self, mode='human'):
+        """Render the environment for visualization."""
         pass  # Render the environment for visualization
 
     def get_state(self): # AR will always be player flag False
+        """Return the current state of the environment.
+    
+        Returns:
+        np.array: The current state of the environment as a vector."""
         state = np.zeros((464,))
-        
+
         top_board = np.array(self.board.player_states["top_player"]["half_board"]).flatten()
         bot_board = np.array(self.board.player_states["bottom_player"]["half_board"]).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
-        row_scores = np.concatenate(self.board.get_row_scores(True).flatten(), self.board.get_row_scores(False).flatten())
+        row_scores = np.concatenate(self.board.get_row_scores(True).flatten(),
+                                    self.board.get_row_scores(False).flatten())
         #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
         skip = 0
         for i,entry in enumerate(bot_board):
@@ -91,7 +123,7 @@ class game_controller(Env):
         skip += 114
         for i,entry in enumerate(row_scores):
             state[i+skip] = entry
-        
+
         state[-2] = self.board.get_rounds_won(True) # 462
         state[-1] = self.board.get_rounds_won(False) # 463
 
@@ -102,7 +134,7 @@ class game_controller(Env):
         """Calculates and returns the reward for a given player's actions.
 
         Args:
-            player (Player): The player for whom to calculate the reward.
+            player (boolean): The player for whom to calculate the reward.
 
         Returns:
             float: The calculated reward based on the player's performance and actions.
@@ -113,18 +145,23 @@ class game_controller(Env):
         win_reward = 10
 
         # Reward for winning a round
-        if player.rounds_won > 0:
-            reward += win_reward * (self.player_states[player] - self.player_states[""])
+        if self.board.player_states[player]["rounds_won"] > 0:
+            reward += win_reward * (self.board.player_states[player]["rounds_won"] - self.board.player_states[not player]["rounds_won"])
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
         reward += 1 * player.turn_score
 
-        if self.player_states["top_player"]["passed"]:
-            reward += 1 + (self.turn_score2 - self.turn_score1)
+        if self.board.player_states[not player]["passed"]:
+            reward += 2 + (self.board.player_states[player]["current_rows_won"]
+                           - self.board.player_states[not player]["current_rows_won"])
 
-        player.reward = reward
-        return player.reward
-    
+        self.rewards[player] = reward
+        return self.rewards[player]
+
     def get_coin_flip(self):
+        """Determine whether the first player starts by coin flip (True) or fixed order (False).
+    
+        Returns:
+        bool: True if the coin flip determines the starting player, False otherwise."""
         return bool(random.getrandbits(1))
