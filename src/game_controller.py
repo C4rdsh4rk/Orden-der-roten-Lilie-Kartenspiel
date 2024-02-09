@@ -68,29 +68,29 @@ class game_controller(Env):
     def render(self, mode='human'):
         pass  # Render the environment for visualization
 
-    def get_state(self):
-        state = np.zeros((461,))
+    def get_state(self): # AR will always be player flag False
+        state = np.zeros((464,))
         
         top_board = np.array(self.board.player_states["top_player"]["half_board"]).flatten()
         bot_board = np.array(self.board.player_states["bottom_player"]["half_board"]).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
         row_scores = np.concatenate(self.board.get_row_scores(True).flatten(), self.board.get_row_scores(False).flatten())
-        graveyard = 
+        #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
         skip = 0
-        for i in range(len(bot_board)):
-            state[i] = bot_board[i]
+        for i,entry in enumerate(bot_board):
+            state[i] = entry
         skip += 114 # 38 * card vector of 3
-        for i in range(len(top_board)):
-            state[i+skip] = top_board[i]
+        for i,entry in enumerate(top_board):
+            state[i+skip] = entry
         skip += 114
-        for i in range(len(hand)):
-            state[i+skip] = hand[i]
+        for i,entry in enumerate(hand):
+            state[i+skip] = entry
         skip += 114
-        for i in range(len(graveyard)):
-            state[i+skip] = graveyard[i]
+        #for i,entry in enumerate(graveyard)):
+        #    state[i+skip] = entry
         skip += 114
-        for i in range(len(row_scores)):
-            state[i+skip] = row_scores[i]
+        for i,entry in enumerate(row_scores):
+            state[i+skip] = entry
         
         state[-2] = self.board.get_rounds_won(True) # 462
         state[-1] = self.board.get_rounds_won(False) # 463
