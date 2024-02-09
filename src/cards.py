@@ -1,8 +1,8 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import random
-from colorama import Fore
 from enum import Enum
 from src.row import Row
+
 
 class CardName(Enum):
     KNIGHT = 0
@@ -12,8 +12,9 @@ class CardName(Enum):
     DRAW1 = 4
     DRAW2 = 5
 
+
 class Card:  
-    def __init__(self, name, strength, row_restriction=None):
+    def __init__(self, name: CardName, strength: int, row_restriction=Row | None):
         self.name = name
         self.type = row_restriction
         self.strength = strength
@@ -26,17 +27,29 @@ class Card:
 
 
 class EffectCard(Card, ABC):
-    def execute_effect(self, player, opponent) -> None:
+    @abstractmethod
+    def execute_effect(self, env) -> None:
+        """
+        Method to resolve the effect of an effect card
+
+        Args:
+            env (Board): receives the board to do any kind of effect on it
+
+        Raises:
+            NotImplementedError: Abstract method
+        """
         raise NotImplementedError
 
 
 class DrawCard(EffectCard):
     def __init__(self, name, num_cards):
-        super().__init__(name, num_cards, None, "white")
+        super().__init__(name, num_cards, None)
         self.num_card = num_cards
 
     def execute_effect(self, env) -> None:
-        player.draw_hand(min(len(player.deck), self.num_card))
+        current_player = env.get_current_player()
+        safe_n_cards = min(len(env.get_deck(current_player)), self.num_card)
+        env.draw_cards_to_hand(env.turn_player, num_cards=safe_n_cards)
 
 
 class Booster:
@@ -49,10 +62,10 @@ class Booster:
             DrawCard("DRAW2", 2)
         ]
         self.available_cards = [
-                            Card("KNIGHT", random.choices(self.available_strength,self.strength_weights)[0], Row.FRONT, color="red"),
-                            Card("CLERIC", random.choices(self.available_strength,self.strength_weights)[0], Row.WISE, color="white"),
-                            Card("HEALER", random.choices(self.available_strength,self.strength_weights)[0], Row.SUPPORT, color="green"),
-                            Card("HERO", random.choices(self.available_strength,self.strength_weights)[0], Row.ANY, color="yellow"), # Can be played in any row
+                            Card("KNIGHT", random.choices(self.available_strength, self.strength_weights)[0], Row.FRONT),
+                            Card("CLERIC", random.choices(self.available_strength, self.strength_weights)[0], Row.WISE),
+                            Card("HEALER", random.choices(self.available_strength, self.strength_weights)[0], Row.SUPPORT),
+                            Card("HERO", random.choices(self.available_strength, self.strength_weights)[0], Row.ANY), # Can be played in any row
                             random.choice(self.available_effects)
                             ]
         
