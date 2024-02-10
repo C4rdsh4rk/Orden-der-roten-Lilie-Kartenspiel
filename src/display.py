@@ -193,6 +193,8 @@ class CardTable:
                     key = key[:-1]
                 elif add == "\n" or add == "\\r":
                     break
+                elif add == "\\x03":  # add keyboard interrupt for windoof
+                    raise KeyboardInterrupt()
                 else:
                     key += add
                 self.write_message(f"{prompt}: {key}")

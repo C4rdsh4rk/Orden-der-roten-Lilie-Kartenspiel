@@ -188,8 +188,6 @@ class Game_Controller(Env):
 
         state = np.zeros((465,), dtype=np.uint8)
         
-        logging.debug(self.board.player_states)
-        
         top_board_cards = list(chain(*list(self.board.get_half_board(False).values())))
         bottom_board_cards = list(chain(*list(self.board.get_half_board(True).values())))
 
@@ -222,7 +220,6 @@ class Game_Controller(Env):
         state[-1] = self.board.get_rounds_won(False)    # 464
 
         self._state = state
-        logging.debug("State: %s", self._state)
         return self._state
 
     def get_reward(self, player=True):
