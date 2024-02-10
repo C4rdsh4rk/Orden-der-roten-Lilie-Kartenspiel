@@ -360,12 +360,11 @@ class Board:
         scores_top = self.get_row_scores(False)
         scores_bottom = self.get_row_scores(True)
         for row in scores_top.keys():
+            # only add scores that are non empty
             if scores_bottom[row] == scores_top[row] and scores_bottom[row]==0:
-                top_score = 0
-                bottom_score = 0
-            else:
-                top_score += int(scores_top[row] >= scores_bottom[row])
-                bottom_score += int(scores_top[row] <= scores_bottom[row])
+                continue
+            top_score += int(scores_top[row] >= scores_bottom[row])
+            bottom_score += int(scores_top[row] <= scores_bottom[row])
 
         return top_score, bottom_score
 
@@ -439,8 +438,8 @@ if __name__ == '__main__':
     assert board.get_won_rows()
     
     p_t, p_b = board.get_won_rows()
-    assert p_t == 3
-    assert p_b == 2
+    assert p_t == 1
+    assert p_b == 0
 
     board.end_round()
     assert len(board.get_graveyard(bottom_player)) == 1
