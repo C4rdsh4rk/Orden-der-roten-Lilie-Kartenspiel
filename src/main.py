@@ -35,7 +35,7 @@ def main():
       observation, _ = env.reset()
       env.render()
       while not env.done:
-           action, _states = None, None#model.predict(observation, deterministic=True)
+           action, _states = None, None #  TODO: model.predict gives array not int??? model.predict(observation, deterministic=True)
            observation, reward, truncates, done, info = env.step(action)
            env.render()
       env.close()

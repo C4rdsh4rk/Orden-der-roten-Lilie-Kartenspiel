@@ -71,7 +71,7 @@ class Human(Player):
         if len(valid_actions)==1:
             monkey_input = 0
         else:
-            monkey_input = int(self.get_user_input("Choose a card from your hand or pass (with 0):", valid_actions))
+            monkey_input = int(self.get_user_input("Choose a card from your hand or pass (with 0)", valid_actions))
         return monkey_input
 
     def make_row_choice(self, card, row_choices: list[Row]) -> Row:
@@ -85,7 +85,7 @@ class Human(Player):
         deck = []
         loop_flag = True
         auto_build_deck=get_user_input(
-            f"Do you want a random deck? 0 - No, 1 - Yes: ",
+            f"Do you want a random deck? 0 - No, 1 - Yes",
             ["0", "1"]
             )
         while loop_flag:

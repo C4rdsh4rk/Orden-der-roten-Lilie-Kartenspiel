@@ -89,7 +89,7 @@ class Game_Controller(Env):
             if self.board.has_passed(bottom_player):
                 continue
             
-            if action >= int(len(self.board.get_hand(bottom_player))+1):
+            if action and action >= len(self.board.get_hand(bottom_player))+1:
                 action = 0
 
             card_index = player.make_choice(self.board.get_valid_choices(bottom_player),
