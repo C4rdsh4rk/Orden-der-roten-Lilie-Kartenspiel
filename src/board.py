@@ -291,6 +291,9 @@ class Board:
             # update round scores
             if self.player_states[player]["current_rows_won"] >= self.player_states[opponent]["current_rows_won"]:
                 self.player_states[player]["rounds_won"] += 1
+        
+        for bottom_player in [True, False]:
+            player = self._get_player_identifier(bottom_player)   
             # update graveyard
             self.player_states[player]["graveyard"] = list(chain(*self.player_states[player]["half_board"].values()))
             # reset board

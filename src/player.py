@@ -76,10 +76,10 @@ class Human(Player):
 
     def make_row_choice(self, card, row_choices: list[Row]) -> Row:
         monkey_input = self.get_user_input(
-            "Chose any row for your card",
-            [str(row_number) for row_number, _ in enumerate(row_choices)]
+            "Chose any row for your card [1-3]",
+            [str(row_number+1) for row_number, _ in enumerate(row_choices)]
         )
-        return row_choices[str(monkey_input)]
+        return row_choices[int(monkey_input) - 1]
 
     def build_deck(self, booster):
         deck = []

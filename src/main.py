@@ -25,9 +25,9 @@ def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
 
 
 def main():
-   input = get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
-   if int(input) == 1:
-      env = Game_Controller()
+   input = int(get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']))
+   env = Game_Controller()
+   if input == 1:
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one

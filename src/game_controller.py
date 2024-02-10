@@ -11,6 +11,7 @@ from src.board import Board, Row
 from src.display import CardTable
 from src.cards import Booster
 
+
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
     
@@ -24,6 +25,7 @@ class Game_Controller(Env):
         """Initialize the environment with a random seed and initial state."""
 
         super().__init__()
+        self.training = training
         self.display = CardTable()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
@@ -80,32 +82,33 @@ class Game_Controller(Env):
         logging.debug("Step: %s", self.steps)
         logging.debug("Action: %s", action)
         info = {}
-        # Note: if conflip, human begins
-        bottom_player = self.coin_flip
+        # Note: if not coinflip, human begins
+        first_player_is_bottom_player = not self.coin_flip
 
-        for player in self.players:
+        for player, is_bottom_player in zip(self.players, [first_player_is_bottom_player, not first_player_is_bottom_player]):
             # we have already passed
-            if self.board.has_passed(bottom_player):
+            if self.board.has_passed(is_bottom_player):
                 continue
             
-            if action and action >= len(self.board.get_hand(bottom_player))+1:
+            if action and action >= len(self.board.get_hand(is_bottom_player))+1:
                 action = 0
 
-            card_index = player.make_choice(self.board.get_valid_choices(bottom_player),
+            card_index = player.make_choice(self.board.get_valid_choices(is_bottom_player),
                                             action=action)
             # we are passing this turn
             if card_index == 0:
-                self.board.pass_round(bottom_player)
+                self.board.pass_round(is_bottom_player)
                 continue
             card_index = card_index - 1
             # otherwise play card
-            played_card = self.board.get_hand(bottom_player)[card_index]
+            played_card = self.board.get_hand(is_bottom_player)[card_index]
             played_row = played_card.type
             if played_row == Row.ANY:
                 played_row = player.make_row_choice(played_card, [Row.FRONT, Row.WISE, Row.SUPPORT])
-            self.board.play_card(bottom_player, card_index, played_row) # (bool, card_index -> int, row (Enum))
-            # switch player for next turn
-            bottom_player = not bottom_player
+            self.board.play_card(is_bottom_player, card_index, played_row) # (bool, card_index -> int, row (Enum))
+            if not self.training and not first_player_is_bottom_player:
+                self.render()
+ 
         if self.board.has_passed(True) and self.board.has_passed(False):
             self.board.end_round()
 
@@ -138,11 +141,10 @@ class Game_Controller(Env):
 
     def render(self, mode='human'):
         """Render the environment for visualization."""
-        bottom_player = self.coin_flip
-        for player in self.players:
+        for bottom_player in [True, False]:
             self.display.update_card_hand(
                 self.board.get_hand(bottom_player),
-                 bottom_player
+                bottom_player
             )
             self.display.set_player_cards(
                 list(self.board.get_half_board(bottom_player).items()),
@@ -157,7 +159,6 @@ class Game_Controller(Env):
                 self.board.get_rounds_won(bottom_player),
                 bottom_player
             )
-            bottom_player = not bottom_player
 
     def get_state(self): # AR will always be player flag False
         """Return the current state of the environment.
@@ -203,22 +204,7 @@ class Game_Controller(Env):
         skip += 114 # 38 * card vector of 3
         state[skip:skip+len(hand)] = hand
         skip += 114 # 38 * card vector of 3
-        
-        '''for i,entry in enumerate(bot_board_card_vectors):
-            state[i] = entry
-        skip += 114 # 38 * card vector of 3
-        for i,entry in enumerate(top_board_card_vectors):
-            state[i+skip] = entry
-        skip += 114
-        for i,entry in enumerate(hand):
-            state[i+skip] = entry
-        skip += 114
-        #for i,entry in enumerate(graveyard)):
-        #    state[i+skip] = entry
-        skip += 114
-        for i,entry in enumerate(row_scores):
-            state[i+skip] = entry'''
-        
+
         state[-3] = self.board.round_number             # 462
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
@@ -236,30 +222,20 @@ class Game_Controller(Env):
         Returns:
             float: The calculated reward based on the player's performance and actions.
         """
-
-        # player.reward+=player.turn_score + player.rounds_won*10 # V1
-        if player:
-            player = "top_player"
-            enemy = "bottom_player"
-        else:
-            player = "bottom_player"
-            enemy = "top_player"
-
         reward = 0
         win_reward = 10
 
         # Reward for winning a round
-        if self.board.player_states[player]["rounds_won"] > 0:
-            reward += win_reward * (self.board.player_states[player]["rounds_won"]
-                                    - self.board.player_states[not player]["rounds_won"])
+        if self.board.get_rounds_won(player) > 0:
+            reward += win_reward * (self.board.get_rounds_won(player)
+                                    - self.board.get_rounds_won(not player))
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
         #reward += 1 * self.board.player_states[player]["turn_score"]
-
-        if self.board.player_states[enemy]["passed"]:
-            reward += 2 + (self.board.player_states[player]["current_rows_won"]
-                           - self.board.player_states[enemy]["current_rows_won"])
+        won_rows = self.board.get_won_rows()
+        if self.board.has_passed(not player):
+            reward += 2 + (won_rows[int(not player)] - won_rows[int(player)])
 
         self.rewards[player] = reward
         logging.debug("Reward: %s", reward)
