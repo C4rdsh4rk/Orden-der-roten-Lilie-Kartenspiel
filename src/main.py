@@ -17,7 +17,7 @@ from src.cards import Booster
 
 
 def main():
-   input = 1#get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
+   input = 3#get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
    env = Game_Controller()
    if input == 1:
       # Load the trained agent
@@ -41,7 +41,7 @@ def main():
       observation, _ = env.reset()
       check_env(env, warn=True)
 
-      episodes = 10
+      episodes = 1
       observation, _ = env.reset()
       for episode in range(1, episodes+1):
          done = False
@@ -53,7 +53,7 @@ def main():
          print(f"Episode:{episode} Score:{reward}")
          observation = env.reset()
 
-      timesteps = get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
+      timesteps = 1#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
       # set up logger
       log_path = os.path.join('logs', 'training')
       new_logger = configure(log_path, ["stdout", "csv", "tensorGame_Controller"])
@@ -71,7 +71,7 @@ def main():
       # find good initial parameters
       model.learn(total_timesteps=timesteps)
       model.save('DQNAgent')
-      evaluate_policy(model, env, n_eval_episodes=10, render=False)
+      evaluate_policy(model, env, n_eval_episodes=1, render=False)
 
 """     # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
       # in their name: only these ones affect the action.

@@ -25,7 +25,7 @@ class Game_Controller(Env):
         self.display = CardTable()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
-        self.observation_space = spaces.Box(low=0, high=50, dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=50, shape=(465,), dtype=np.float64)
         # Initialize state
         self._state = None
         self.done = False
@@ -71,6 +71,9 @@ class Game_Controller(Env):
         for player in self.players:
             # we have already passed
             if self.board.has_passed(bottom_player):
+                continue
+            
+            if action >= len(self.board.get_hand(bottom_player)):
                 continue
 
             card_index = player.make_choice(self.board.get_valid_choices(bottom_player),
@@ -152,8 +155,8 @@ class Game_Controller(Env):
         # current round 1
         # = 465
 
-        state = np.zeros((465,))
-
+        self._state = np.zeros((465,))
+        """
         top_board = np.array(list(chain(*list(self.board.player_states["top_player"]["half_board"].values())))).flatten() # TODO implement get method
         bot_board = np.array(list(chain(*list(self.board.player_states["bottom_player"]["half_board"].values())))).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
@@ -162,7 +165,7 @@ class Game_Controller(Env):
             [score for row, score in self.board.get_row_scores(False).items()]
         )
         #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
-        """skip = 0
+        skip = 0
         for i,entry in enumerate(bot_board):
             state[i] = entry
         skip += 114 # 38 * card vector of 3

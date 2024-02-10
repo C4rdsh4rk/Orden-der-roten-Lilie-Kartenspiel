@@ -359,10 +359,13 @@ class Board:
 
         scores_top = self.get_row_scores(False)
         scores_bottom = self.get_row_scores(True)
-
         for row in scores_top.keys():
-            top_score += int(scores_top[row] >= scores_bottom[row])
-            bottom_score += int(scores_top[row] <= scores_bottom[row])
+            if scores_bottom[row] == scores_top[row] and scores_bottom[row]==0:
+                top_score = 0
+                bottom_score = 0
+            else:
+                top_score += int(scores_top[row] >= scores_bottom[row])
+                bottom_score += int(scores_top[row] <= scores_bottom[row])
 
         return top_score, bottom_score
 
