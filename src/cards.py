@@ -43,13 +43,12 @@ class EffectCard(Card, ABC):
 
 class DrawCard(EffectCard):
     def __init__(self, name, num_cards):
-        super().__init__(name, num_cards, None)
+        super().__init__(name, num_cards, Row.EFFECTS)
         self.num_card = num_cards
 
-    def execute_effect(self, env) -> None:
-        current_player = env.get_current_player()
-        safe_n_cards = min(len(env.get_deck(current_player)), self.num_card)
-        env.draw_cards_to_hand(env.turn_player, num_cards=safe_n_cards)
+    def execute_effect(self, env, bottom_player) -> None:
+        safe_n_cards = min(len(env.get_deck(bottom_player)), self.num_card)
+        env.draw_cards_to_hand(bottom_player, num_cards=safe_n_cards)
 
 
 class Booster:

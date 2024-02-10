@@ -45,6 +45,14 @@ class CardTable:
             Row.SUPPORT: {
                 "color": "white",
                 "bgcolor": "dark_green"
+            },
+            Row.ANY: {
+                "color": "yellow",
+                "bgcolor": "black"
+            },
+            Row.EFFECTS: {
+                "color": "yellow",
+                "bgcolor": "black"
             }
         }
         # value for the board if there are no cards
@@ -65,6 +73,7 @@ class CardTable:
         self._setup_hand()
         self._setup_player_info()
         self._setup_board()
+        self.live = Live(self.layout, refresh_per_second=4)
 
     def _setup_board(self):
         self.layout["board_view"]["board"].split_column(
@@ -148,7 +157,7 @@ class CardTable:
                             Text(
                                 f"{card.name}\n{card.strength}",
                                 justify="center",
-                                style=style.Style(color=card.color)),
+                                style=style.Style(color=self.row_colors[card.type]["color"])),
                                 width=10
                             )
                         for card in cards
@@ -219,10 +228,10 @@ class CardTable:
             for i, card in enumerate(cards):
                 padding = " " if i<9 else ""
                 card_name = Text(f"[{i+1}]{padding}{card.name}")
-                card_name.stylize(f"bold {card.color}")
+                card_name.stylize(f"bold {self.row_colors[card.type]}")  # card.color
 
                 card_strength = Text(f"{card.strength}")
-                card_strength.stylize(f"bold {card.color}")
+                card_strength.stylize(f"bold {self.row_colors[card.type]}")# card.color
 
                 hand_table.add_row(card_name, card_strength)
             self.layout["board_view"]["right"]["bottom_player"].update(
@@ -259,20 +268,10 @@ class CardTable:
         )
     
     def start_render(self):
-        with Live(self.layout, refresh_per_second=4):  # update 4 times a second to feel fluid
-            self.write_message("test")
-            time.sleep(2)
-            self.ask_prompt("Chose one", ["1"])
-            self.update_card_hand(Booster().open(25), True)
-            self.update_card_hand([Card("TEst", 0, Row.ANY, color="white")], False)
-            time.sleep(2)
-            self.update_card_hand(Booster().open(5), True)
-
-            time.sleep(2)  # arbitrary delay
-            self.set_player_cards([(Row.FRONT, [Card("KNIGHT", 3, Row.FRONT, color="red")]), (Row.SUPPORT, []), (Row.WISE, [])],False)
-            time.sleep(2)
-            self.set_player_cards([(Row.FRONT, []), (Row.SUPPORT, [Card("HEALER", 2, Row.FRONT, color="green")]), (Row.WISE, [Card("Cleric", 1, Row.WISE, color="white")])],True)
-            time.sleep(20)
+        self.live.start()
+    
+    def stop_render(self):
+        self.live.stop()
 
 
 if __name__ == '__main__':

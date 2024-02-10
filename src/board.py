@@ -199,6 +199,19 @@ class Board:
         """
         player_identifier = self._get_player_identifier(bottom_player)
         self.player_states[player_identifier]["hand"] = hand
+    
+    def get_half_board(self, bottom_player: bool) -> dict[Row, list]:
+        """
+        Method to get the board of a player.
+
+        Args:
+            bottom_player (bool): 
+
+        Returns:
+            dict[Row, list]: Row: [Cards] dict
+        """
+        player_identifier = self._get_player_identifier(bottom_player)
+        return self.player_states[player_identifier]["half_board"]
 
     def get_valid_choices(self, bottom_player: bool) -> list[int]:
         """
@@ -242,7 +255,7 @@ class Board:
         played_card = hand[card_index]
         # special case if effect card
         if isinstance(played_card, EffectCard):
-            played_card.execute_effect(self)
+            played_card.execute_effect(self, bottom_player)
         else:
             # **PLEASE LEAVE AS IS, is using += the function adds cards to both boards (dont know why 0_o)
             # add it to the players board

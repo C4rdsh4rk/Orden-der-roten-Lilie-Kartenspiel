@@ -1,4 +1,5 @@
 # third party imports
+from itertools import chain
 import random
 import numpy as np
 from gymnasium import Env, spaces
@@ -6,6 +7,7 @@ from gymnasium import Env, spaces
 # local imports
 from src.player import Human,ArtificialRetardation
 from src.board import Board, Row
+from src.display import CardTable
 
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
@@ -20,6 +22,7 @@ class Game_Controller(Env):
         """Initialize the environment with a random seed and initial state."""
 
         super().__init__()
+        self.display = CardTable()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
         self.observation_space = spaces.Box(low=0, high=50, dtype=np.float32)
@@ -34,10 +37,11 @@ class Game_Controller(Env):
                 ArtificialRetardation("Clueless Robot")
                 ]
         else:
+            self.display.start_render()
             self.players =  [
                 ArtificialRetardation("Clueless Robot"),
-                Human("IQ Test Subject")
-                ]
+                Human("IQ Test Subject", self.display.ask_prompt)
+            ]
         if not self.coin_flip:
             self.players.reverse()
 
@@ -75,6 +79,7 @@ class Game_Controller(Env):
             if card_index == 0:
                 self.board.pass_round(bottom_player)
                 continue
+            card_index - 1
             # otherwise play card
             played_card = self.board.get_hand(bottom_player)[card_index]
             played_row = played_card.type
@@ -89,7 +94,7 @@ class Game_Controller(Env):
         truncated = False
         self.done = self.board.game_ended()
         observation = self.get_state()
-        reward = self.get_reward(player)
+        reward = 0 #self.get_reward(player)
 
         return observation, reward, truncated , self.done, info
 
@@ -111,7 +116,27 @@ class Game_Controller(Env):
 
     def render(self, mode='human'):
         """Render the environment for visualization."""
-        pass  # Render the environment for visualization
+        # Render the environment for visualization
+        bottom_player = self.coin_flip
+        for player in self.players:
+            self.display.update_card_hand(
+                self.board.get_hand(bottom_player),
+                 bottom_player
+            )
+            self.display.set_player_cards(
+                list(self.board.get_half_board(bottom_player).items()),
+                bottom_player
+            )
+            self.display.set_player_info(
+                self.board.get_player_name(bottom_player),
+                len(self.board.get_deck(bottom_player)),
+                len(self.board.get_graveyard(bottom_player)),
+                "NOT IMPLEMENTED :(",
+                self.board.get_won_rows()[int(bottom_player)],
+                self.board.get_rounds_won(bottom_player),
+                bottom_player
+            )
+            bottom_player = not bottom_player
 
     def get_state(self): # AR will always be player flag False
         """Return the current state of the environment.
@@ -129,13 +154,15 @@ class Game_Controller(Env):
 
         state = np.zeros((465,))
 
-        top_board = np.array(list(self.board.player_states["top_player"]["half_board"].values())).flatten() # TODO implement get method
-        bot_board = np.array(list(self.board.player_states["bottom_player"]["half_board"].values())).flatten()
+        top_board = np.array(list(chain(*list(self.board.player_states["top_player"]["half_board"].values())))).flatten() # TODO implement get method
+        bot_board = np.array(list(chain(*list(self.board.player_states["bottom_player"]["half_board"].values())))).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
-        row_scores = np.concatenate(self.board.get_row_scores(True).flatten(),
-                                    self.board.get_row_scores(False).flatten())
+        row_scores = np.array(
+            [score for row, score in self.board.get_row_scores(True).items()]+
+            [score for row, score in self.board.get_row_scores(False).items()]
+        )
         #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
-        skip = 0
+        """skip = 0
         for i,entry in enumerate(bot_board):
             state[i] = entry
         skip += 114 # 38 * card vector of 3
@@ -155,7 +182,7 @@ class Game_Controller(Env):
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
 
-        self._state = state
+        self._state = state"""
         return self._state
 
     def get_reward(self, player):
@@ -194,3 +221,7 @@ class Game_Controller(Env):
         Returns:
         bool: True if the coin flip determines the starting player, False otherwise."""
         return bool(random.getrandbits(1))
+
+    def close(self):
+        self.display.stop_render()
+    

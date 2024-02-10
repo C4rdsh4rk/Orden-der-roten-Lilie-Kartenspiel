@@ -1,5 +1,5 @@
 # third party imports
-import torch as th
+#import torch as th
 import os
 from stable_baselines3 import PPO,DQN
 from stable_baselines3.common.vec_env import VecFrameStack
@@ -8,30 +8,33 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.logger import configure
 # local imports
 from src.game_controller import Game_Controller
-from utils import get_user_input
+from src.cards import Booster
 
 
-def mutate(params: Dict[str, th.Tensor]) -> Dict[str, th.Tensor]:
-    """Mutate parameters by adding normal noise to them"""
-    return dict((name, param + th.randn_like(param)) for name, param in params.items())
+#def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
+#    """Mutate parameters by adding normal noise to them"""
+#    return dict((name, param + th.randn_like(param)) for name, param in params.items())
 
 
 def main():
-   input = get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
+   input = 1#get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
    env = Game_Controller()
    if input == 1:
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      # model = DQN.load("DQNAgent", env=env, print_system_info=True)
-      # DQNAgent.zip needs to be in the main folder!!
+      env.board.set_deck(True, Booster().open(20))
+      env.board.draw_cards_to_hand(True, 10)
+      env.board.set_deck(False, Booster().open(20))
+      env.board.draw_cards_to_hand(False, 10)
       model = DQN.load("DQNAgent", env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
       while not env.done:
-           action, _states = model.predict(observation, deterministic=True)
-           observation, reward, done, info = env.step(action)
+           action, _states = None, None#model.predict(observation, deterministic=True)
+           observation, reward, truncates, done, info = env.step(action)
            env.render()
+      env.close()
    elif input == 2:
       raise NotImplementedError
    else:
@@ -70,7 +73,7 @@ def main():
       model.save('DQNAgent')
       evaluate_policy(model, env, n_eval_episodes=10, render=False)
 
-      # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
+"""     # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
       # in their name: only these ones affect the action.
       # NOTE: you can retrieve those parameters using model.get_parameters() too
       mean_params = dict(
@@ -113,7 +116,7 @@ def main():
          print(f"Best fitness: {top_candidates[0][1]:.2f}")
       model = top_candidates[0]
       model.save_replay_buffer("DQN_with_replay")
-      model.save('DQNAgent')
+      model.save('DQNAgent')"""
 
 
 if __name__ == "__main__":

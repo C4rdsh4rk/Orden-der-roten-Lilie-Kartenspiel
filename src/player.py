@@ -48,7 +48,7 @@ class Player(ABC):
             Card: Card that is played"""
         raise NotImplementedError
     
-    def make_row_choice(self, card: Card) -> Row:
+    def make_row_choice(self, card: Card, display) -> Row:
         """
         Interface function that must return exactly one row where the given card should be played in.
 
@@ -66,12 +66,12 @@ class Human(Player):
         self.get_user_input = get_user_input
 
     def make_choice(self, valid_actions, action=None):
-        valid_actions = [x+1 for x in valid_actions] # User friendly numbers
-        valid_actions += [0]
+        valid_actions = [str(x+1) for x in valid_actions] # User friendly numbers
+        valid_actions += ["0"]
         if len(valid_actions)==1:
             monkey_input = 0
         else:
-            monkey_input = self.get_user_input("Choose a card from your hand or pass (with 0):", valid_actions)
+            monkey_input = int(self.get_user_input("Choose a card from your hand or pass (with 0):", valid_actions))
         return monkey_input
 
     def make_row_choice(self, card, row_choices: list[Row]) -> Row:
@@ -79,7 +79,7 @@ class Human(Player):
             "Chose any row for your card",
             [str(row_number) for row_number, _ in enumerate(row_choices)]
         )
-        return row_choices[monkey_input]
+        return row_choices[str(monkey_input)]
 
     def build_deck(self, booster):
         deck = []
@@ -123,18 +123,19 @@ class Human(Player):
                 continue
         return deck
 
+
 class ArtificialRetardation(Player):
     def __init__(self, name):
         super().__init__(name)
 
-    def make_card_choice(self, valid_choices, action=None):
+    def make_choice(self, valid_choices, action=None):
         if action:
             return action
         else:
-            return int(random.choice(valid_choices))-1 # Monke
+            return int(random.choice(valid_choices)) # Monke
 
     def make_row_choice(self, card, row_choices: list[Row]) -> Row:
-        return random.choice(list(row_choices.values()))
+        return random.choice(list(row_choices))
 
     def make_pass_choice(self, hand) -> bool:
         if len(hand)==0:
