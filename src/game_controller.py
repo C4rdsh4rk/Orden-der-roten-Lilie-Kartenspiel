@@ -111,10 +111,20 @@ class Game_Controller(Env):
  
         if self.board.has_passed(True) and self.board.has_passed(False):
             self.board.end_round()
+            self.board.draw_cards_to_hand(True)
+            self.board.draw_cards_to_hand(False)
 
         truncated = self.steps == 50
 
         self.done = self.board.game_ended()
+        if not self.training and self.done:
+            winner = self.board.get_winner()
+            if len(winner) == 1:
+                message = f"{winner[0]} won the game!"
+            else:
+                message = "Draw, no one won the game"
+            self.display.write_message(message)
+
         observation = self.get_state()
         reward = self.get_reward()
 

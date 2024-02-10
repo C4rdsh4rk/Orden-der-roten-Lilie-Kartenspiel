@@ -39,8 +39,8 @@ class CardTable:
                 "bgcolor": "dark_red"
             },
             Row.WISE: {
-                "color": "black",
-                "bgcolor": "grey74"
+                "color": "white",
+                "bgcolor": "bright_black"
             },
             Row.SUPPORT: {
                 "color": "white",

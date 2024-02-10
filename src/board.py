@@ -251,8 +251,7 @@ class Board:
             card (int): index of the card that is played (index in hand)
             row (Row): row in which the card is played
         """
-        hand = self.get_hand(bottom_player)
-        played_card = hand[card_index]
+        played_card = self.get_hand(bottom_player)[card_index]
         # special case if effect card
         if isinstance(played_card, EffectCard):
             played_card.execute_effect(self, bottom_player)
@@ -262,7 +261,7 @@ class Board:
             row_cards = self.player_states[self._get_player_identifier(bottom_player)]["half_board"][row]
             self.player_states[self._get_player_identifier(bottom_player)]["half_board"][row] = row_cards + [played_card]
         # remove card from hand
-        self.set_hand(bottom_player, hand[:card_index] + hand[card_index+1:])
+        self.set_hand(bottom_player, self.get_hand(bottom_player)[:card_index] + self.get_hand(bottom_player)[card_index+1:])
 
         top_player_won_rows, bottom_player_won_rows = self.get_won_rows()
         self.player_states["top_player"]["current_rows_won"] = top_player_won_rows
@@ -417,7 +416,8 @@ if __name__ == '__main__':
     x = len(board.get_deck(bottom_player))
     assert len(board.get_deck(bottom_player)) == 20
 
-    board.draw_cards_to_hand(bottom_player, 5)
+    board.draw_cards_to_hand(bottom_player, 5, True)
+
     assert len(board.get_deck(bottom_player)) == 15
     assert len(board.get_valid_choices(bottom_player)) == 5
     board.play_card(False, 0, Row.FRONT)
