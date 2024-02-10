@@ -46,10 +46,12 @@ class Game_Controller(Env):
                 ArtificialRetardation("Clueless Robot"),
                 Human("IQ Test Subject", self.display.ask_prompt)
             ]
+
+        self.board = Board(self.players[0].name, self.players[1].name)
+
         if not self.coin_flip:
             self.players.reverse()
 
-        self.board = Board(self.players[0].name, self.players[1].name)
         self.rewards = {
             True : 0,
             False : 0
