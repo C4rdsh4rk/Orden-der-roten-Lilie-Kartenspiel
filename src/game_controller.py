@@ -110,11 +110,14 @@ class Game_Controller(Env):
         if self.board.has_passed(True) and self.board.has_passed(False):
             self.board.end_round()
 
-        truncated = False
+        truncated = self.steps == 50
+
         self.done = self.board.game_ended()
         observation = self.get_state()
-        reward = 0 #self.get_reward(player)
+        reward = self.get_reward()
 
+        if truncated:
+            logging.debug("TRUNCATED")
         return observation, reward, truncated , self.done, info
 
     def reset(self, seed=None, options=None):
@@ -206,7 +209,7 @@ class Game_Controller(Env):
         logging.debug("State: %s", self._state)
         return self._state
 
-    def get_reward(self, player):
+    def get_reward(self, player=True):
         """Calculates and returns the reward for a given player's actions.
 
         Args:
@@ -217,6 +220,13 @@ class Game_Controller(Env):
         """
 
         # player.reward+=player.turn_score + player.rounds_won*10 # V1
+        if player:
+            player = "top_player"
+            enemy = "bottom_player"
+        else:
+            player = "bottom_player"
+            enemy = "top_player"
+
         reward = 0
         win_reward = 10
 
@@ -227,11 +237,11 @@ class Game_Controller(Env):
 
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
-        reward += 1 * player.turn_score
+        #reward += 1 * self.board.player_states[player]["turn_score"]
 
-        if self.board.player_states[not player]["passed"]:
+        if self.board.player_states[enemy]["passed"]:
             reward += 2 + (self.board.player_states[player]["current_rows_won"]
-                           - self.board.player_states[not player]["current_rows_won"])
+                           - self.board.player_states[enemy]["current_rows_won"])
 
         self.rewards[player] = reward
         logging.debug("Reward: %s", reward)
