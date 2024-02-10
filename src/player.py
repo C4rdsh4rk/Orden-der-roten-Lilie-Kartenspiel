@@ -129,7 +129,7 @@ class ArtificialRetardation(Player):
         super().__init__(name)
 
     def make_choice(self, valid_choices, action=None):
-        if action:
+        if action is not None:
             return action
         else:
             return int(random.choice(valid_choices)) # Monke

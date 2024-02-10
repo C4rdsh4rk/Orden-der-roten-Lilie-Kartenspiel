@@ -127,7 +127,7 @@ class Board:
         player_identifier = self._get_player_identifier(bottom_player)
         self.player_states[player_identifier]["deck"] = deck
 
-    def get_deck(self, bottom_player: bool) -> None:
+    def get_deck(self, bottom_player: bool):
         """
         Method to get the deck of a player. If bottom player the deck of
         the bottom player will be returned, otherwise the deck of the
@@ -139,7 +139,7 @@ class Board:
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["deck"]
     
-    def get_graveyard(self, bottom_player: bool) -> None:
+    def get_graveyard(self, bottom_player: bool):
         """
         Method to get the graveyard of a player. If bottom player the graveyard of
         the bottom player will be returned, otherwise the graveyard of the
@@ -236,7 +236,8 @@ class Board:
         """
         actually_drawn = min(len(self.get_deck(bottom_player)), num_cards)
         if shuffle:
-            self.set_deck(bottom_player, random.shuffle(self.get_deck(bottom_player)))
+            random.shuffle(self.get_deck(bottom_player))
+            #self.set_deck(bottom_player, )
         # Draw cards from the deck
         self.set_hand(bottom_player, self.get_hand(bottom_player) + self.get_deck(bottom_player)[:actually_drawn])
         # Remove drawn cards from the deck

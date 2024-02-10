@@ -1,19 +1,27 @@
 # third party imports
 #import torch as th
+
+from typing import Dict
+
+import gymnasium as gym
+import numpy as np
+import torch as th
+
 import os
-from stable_baselines3 import PPO,DQN
+from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.logger import configure
+
 # local imports
 from src.game_controller import Game_Controller
-from src.cards import Booster
 
 
-#def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
-#    """Mutate parameters by adding normal noise to them"""
-#    return dict((name, param + th.randn_like(param)) for name, param in params.items())
+
+def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
+    """Mutate parameters by adding normal noise to them"""
+    return dict((name, param + th.randn_like(param)) for name, param in params.items())
 
 
 def main():
@@ -23,10 +31,6 @@ def main():
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      env.board.set_deck(True, Booster().open(20))
-      env.board.draw_cards_to_hand(True, 10)
-      env.board.set_deck(False, Booster().open(20))
-      env.board.draw_cards_to_hand(False, 10)
       model = DQN.load("DQNAgent", env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
@@ -43,6 +47,7 @@ def main():
 
       episodes = 1
       observation, _ = env.reset()
+      '''
       for episode in range(1, episodes+1):
          done = False
          score = 0 
@@ -52,11 +57,11 @@ def main():
                observation, reward, truncated , done, info = env.step(action)
          print(f"Episode:{episode} Score:{reward}")
          observation = env.reset()
-
+      '''
       timesteps = 1#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
       # set up logger
       log_path = os.path.join('logs', 'training')
-      new_logger = configure(log_path, ["stdout", "csv", "tensorGame_Controller"])
+      new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
 
       model = DQN("MlpPolicy",
                      env,

@@ -3,11 +3,13 @@ from itertools import chain
 import random
 import numpy as np
 from gymnasium import Env, spaces
-
+import logging
+import time
 # local imports
 from src.player import Human,ArtificialRetardation
 from src.board import Board, Row
 from src.display import CardTable
+from src.cards import Booster
 
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
@@ -50,6 +52,18 @@ class Game_Controller(Env):
             True : 0,
             False : 0
             }
+        
+        self.steps=0
+
+        time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
+        logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
+
+        self.board.set_deck(True, Booster().open(20))
+        self.board.draw_cards_to_hand(True, 10)
+        self.board.set_deck(False, Booster().open(20))
+        self.board.draw_cards_to_hand(False, 10)
+
+
 
     def step(self, action):
         """Update the environment based on the provided action and return the new observation, reward, etc.
@@ -63,7 +77,9 @@ class Game_Controller(Env):
             a boolean indicating if the episode has been truncated, 
             a boolean indicating whether the episode has ended, 
             and a dictionary with additional information."""
-
+        self.steps+=1
+        logging.debug("Step: %s", self.steps)
+        logging.debug("Action: %s", action)
         info = {}
         # Note: if conflip, human begins
         bottom_player = self.coin_flip
@@ -73,8 +89,8 @@ class Game_Controller(Env):
             if self.board.has_passed(bottom_player):
                 continue
             
-            if action >= len(self.board.get_hand(bottom_player)):
-                continue
+            if action >= int(len(self.board.get_hand(bottom_player))+1):
+                action = 0
 
             card_index = player.make_choice(self.board.get_valid_choices(bottom_player),
                                             action=action)
@@ -82,7 +98,7 @@ class Game_Controller(Env):
             if card_index == 0:
                 self.board.pass_round(bottom_player)
                 continue
-            card_index - 1
+            #card_index - 1
             # otherwise play card
             played_card = self.board.get_hand(bottom_player)[card_index]
             played_row = played_card.type
@@ -119,7 +135,6 @@ class Game_Controller(Env):
 
     def render(self, mode='human'):
         """Render the environment for visualization."""
-        # Render the environment for visualization
         bottom_player = self.coin_flip
         for player in self.players:
             self.display.update_card_hand(
@@ -155,8 +170,10 @@ class Game_Controller(Env):
         # current round 1
         # = 465
 
-        self._state = np.zeros((465,))
-        """
+        state = np.zeros((465,))
+        
+        logging.debug("State: %s", self.board.player_states)
+
         top_board = np.array(list(chain(*list(self.board.player_states["top_player"]["half_board"].values())))).flatten() # TODO implement get method
         bot_board = np.array(list(chain(*list(self.board.player_states["bottom_player"]["half_board"].values())))).flatten()
         hand = np.array(self.board.get_hand(False)).flatten()
@@ -185,7 +202,8 @@ class Game_Controller(Env):
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
 
-        self._state = state"""
+        self._state = state
+        logging.debug("State: %s", self._state)
         return self._state
 
     def get_reward(self, player):
@@ -216,6 +234,7 @@ class Game_Controller(Env):
                            - self.board.player_states[not player]["current_rows_won"])
 
         self.rewards[player] = reward
+        logging.debug("Reward: %s", reward)
         return self.rewards[player]
 
     def get_coin_flip(self):
