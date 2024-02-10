@@ -48,7 +48,7 @@ class Board:
         }
         # start with round 1
         self.round_number = 1
-        self.done = False
+        #self.done = False
         # indicates which players turn it is
         self.turn_player = ""
         # Setup for game
@@ -88,7 +88,6 @@ class Board:
         # Setup for game
         self.clear_deck()  # Generate empty player decks
         self.clear_hands() # Generate empty player hands
-        self.round_number = 1
 
     def _get_player_identifier(self, bottom_player: bool) -> str:
         """
@@ -297,7 +296,7 @@ class Board:
             # reset board
             self.player_states[player]["half_board"] = self.half_board.copy()
             # reset rows won
-            self.player_states[player]["current_row_won"] = 0
+            self.player_states[player]["current_rows_won"] = 0
             # reset passed state
             self.player_states[player]["passed"] = False
         # update round ticker

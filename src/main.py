@@ -47,8 +47,8 @@ def main():
 
       episodes = 1
       observation, _ = env.reset()
-      '''
-      for episode in range(1, episodes+1):
+      
+      '''for episode in range(1, episodes+1):
          done = False
          score = 0 
          while not done:
@@ -56,8 +56,8 @@ def main():
                action = env.action_space.sample()
                observation, reward, truncated , done, info = env.step(action)
          print(f"Episode:{episode} Score:{reward}")
-         observation = env.reset()
-      '''
+         observation = env.reset()'''
+      
       timesteps = 1#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
       # set up logger
       log_path = os.path.join('logs', 'training')
