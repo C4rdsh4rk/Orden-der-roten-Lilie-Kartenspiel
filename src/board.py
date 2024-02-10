@@ -55,7 +55,7 @@ class Board:
         self.clear_deck()  # Generate empty player decks
         self.clear_hands() # Generate empty player hands
         self.round_number = 1
-    
+
     def reset(self) -> None:
         # Player attributes
         self.player_states = {
@@ -137,7 +137,7 @@ class Board:
         """
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["deck"]
-    
+
     def get_graveyard(self, bottom_player: bool):
         """
         Method to get the graveyard of a player. If bottom player the graveyard of
@@ -149,7 +149,7 @@ class Board:
         """
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["graveyard"]
-    
+
     def get_rounds_won(self, bottom_player: bool) -> None:
         """
         Method to get the rounds won of a player. 
@@ -198,7 +198,7 @@ class Board:
         """
         player_identifier = self._get_player_identifier(bottom_player)
         self.player_states[player_identifier]["hand"] = hand
-    
+
     def get_half_board(self, bottom_player: bool) -> dict[Row, list]:
         """
         Method to get the board of a player.
@@ -301,7 +301,7 @@ class Board:
             self.player_states[player]["passed"] = False
         # update round ticker
         self.round_number += 1
-    
+
     def game_ended(self) -> bool:
         """
         Method to check if the game is finished
@@ -409,7 +409,7 @@ if __name__ == '__main__':
     board.reset()
     board.clear_deck()
     board.clear_hands()
-    
+
     board.set_deck(bottom_player, Booster().open(20))
     x = len(board.get_deck(bottom_player))
     assert len(board.get_deck(bottom_player)) == 20
@@ -436,7 +436,7 @@ if __name__ == '__main__':
 
     assert board.get_won_rows()
     assert board.get_won_rows()
-    
+
     p_t, p_b = board.get_won_rows()
     assert p_t == 1
     assert p_b == 0

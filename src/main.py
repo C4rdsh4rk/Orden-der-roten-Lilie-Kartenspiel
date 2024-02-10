@@ -16,7 +16,7 @@ from stable_baselines3.common.logger import configure
 
 # local imports
 from src.game_controller import Game_Controller
-
+from src.utils import get_user_input
 
 
 def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
@@ -25,30 +25,30 @@ def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
 
 
 def main():
-   input = 3 #get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
-   env = Game_Controller()
-   if input == 1:
+   input = get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
+   if int(input) == 1:
+      env = Game_Controller()
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
       model = DQN.load("DQNAgent", env=env, print_system_info=True)
       observation, _ = env.reset()
-      env.setup_hand_for_new_round()
       env.render()
       while not env.done:
            action, _states = None, None #  TODO: model.predict gives array not int??? model.predict(observation, deterministic=True)
            observation, reward, truncates, done, info = env.step(action)
            env.render()
       env.close()
-   elif input == 2:
+   elif int(input) == 2:
       raise NotImplementedError
    else:
+      env = Game_Controller(True)
       observation, _ = env.reset()
       check_env(env, warn=True)
 
       episodes = 1
       observation, _ = env.reset()
-      
+
       '''for episode in range(1, episodes+1):
          done = False
          score = 0 
@@ -58,8 +58,8 @@ def main():
                observation, reward, truncated , done, info = env.step(action)
          print(f"Episode:{episode} Score:{reward}")
          observation = env.reset()'''
-      
-      timesteps = 1#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
+
+      timesteps = 100#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
       # set up logger
       log_path = os.path.join('logs', 'training')
       new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])

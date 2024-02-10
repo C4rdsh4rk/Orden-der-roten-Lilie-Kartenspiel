@@ -27,7 +27,7 @@ class Game_Controller(Env):
         self.display = CardTable()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
-        self.observation_space = spaces.Box(low=0, high=50, shape=(465,), dtype=np.float64)
+        self.observation_space = spaces.Box(low=0, high=50, shape=(465,), dtype=np.uint8)
         # Initialize state
         self._state = None
         self.done = False
@@ -132,6 +132,7 @@ class Game_Controller(Env):
         super().reset(seed=seed)
         info = {}
         self.board.reset()
+        self.setup_hand_for_new_round()
         self._state = self.get_state()
         return self._state, info
 
@@ -172,23 +173,41 @@ class Game_Controller(Env):
         # current round 1
         # = 465
 
-        state = np.zeros((465,))
+        state = np.zeros((465,), dtype=np.uint8)
         
-        logging.debug("State: %s", self.board.player_states)
+        logging.debug(self.board.player_states)
+        
+        top_board_cards = list(chain(*list(self.board.get_half_board(False).values())))
+        bottom_board_cards = list(chain(*list(self.board.get_half_board(True).values())))
 
-        top_board = np.array(list(chain(*list(self.board.player_states["top_player"]["half_board"].values())))).flatten() # TODO implement get method
-        bot_board = np.array(list(chain(*list(self.board.player_states["bottom_player"]["half_board"].values())))).flatten()
-        hand = np.array(self.board.get_hand(False)).flatten()
+        top_board_card_vectors = np.array([
+            card.get_card_vector() for card in top_board_cards
+        ], dtype=np.uint8).flatten()
+
+        bot_board_card_vectors = np.array([
+            card.get_card_vector() for card in bottom_board_cards
+        ], dtype=np.uint8).flatten()
+
+        hand = np.array([
+            card.get_card_vector() for card in self.board.get_hand(False)
+        ], dtype=np.uint8).flatten()
         row_scores = np.array(
             [score for row, score in self.board.get_row_scores(True).items()]+
             [score for row, score in self.board.get_row_scores(False).items()]
         )
         #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
         skip = 0
-        for i,entry in enumerate(bot_board):
+        state[skip:len(bot_board_card_vectors)] = bot_board_card_vectors
+        skip += 114 # 38 * card vector of 3
+        state[skip:skip+len(top_board_card_vectors)] = top_board_card_vectors
+        skip += 114 # 38 * card vector of 3
+        state[skip:skip+len(hand)] = hand
+        skip += 114 # 38 * card vector of 3
+        
+        '''for i,entry in enumerate(bot_board_card_vectors):
             state[i] = entry
         skip += 114 # 38 * card vector of 3
-        for i,entry in enumerate(top_board):
+        for i,entry in enumerate(top_board_card_vectors):
             state[i+skip] = entry
         skip += 114
         for i,entry in enumerate(hand):
@@ -198,8 +217,8 @@ class Game_Controller(Env):
         #    state[i+skip] = entry
         skip += 114
         for i,entry in enumerate(row_scores):
-            state[i+skip] = entry
-
+            state[i+skip] = entry'''
+        
         state[-3] = self.board.round_number             # 462
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
