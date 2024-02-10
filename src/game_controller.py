@@ -58,12 +58,11 @@ class Game_Controller(Env):
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
 
+    def setup_hand_for_new_round(self) -> None:
         self.board.set_deck(True, Booster().open(20))
         self.board.draw_cards_to_hand(True, 10)
         self.board.set_deck(False, Booster().open(20))
         self.board.draw_cards_to_hand(False, 10)
-
-
 
     def step(self, action):
         """Update the environment based on the provided action and return the new observation, reward, etc.
@@ -98,7 +97,7 @@ class Game_Controller(Env):
             if card_index == 0:
                 self.board.pass_round(bottom_player)
                 continue
-            #card_index - 1
+            card_index = card_index - 1
             # otherwise play card
             played_card = self.board.get_hand(bottom_player)[card_index]
             played_row = played_card.type

@@ -25,7 +25,7 @@ def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
 
 
 def main():
-   input = 3#get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
+   input = 3 #get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']) 
    env = Game_Controller()
    if input == 1:
       # Load the trained agent
@@ -33,6 +33,7 @@ def main():
       # to compare the system on which the model was trained vs the current one
       model = DQN.load("DQNAgent", env=env, print_system_info=True)
       observation, _ = env.reset()
+      env.setup_hand_for_new_round()
       env.render()
       while not env.done:
            action, _states = None, None #  TODO: model.predict gives array not int??? model.predict(observation, deterministic=True)
