@@ -53,14 +53,16 @@ def main():
       if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
          timesteps = get_int("How many timesteps should be made for the first training?")
          lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005])
-         train_frequency = get_choice("In what interval should the networks weights be adjusted?",
-                                      [(1,"episode"),(1, "step")])
+         lr_choice = float(lr_choice)
+         train_index = get_index("In what interval should the networks weights be adjusted?",
+                                      ["1/episode","1/step"])
+         frequencies = [(1,"episode"),(1, "step")]
          model = QRDQN("MlpPolicy",
                            env,
                            #ent_coef=0.0,
                            #policy_kwargs={"net_arch": [32]},
                            #seed=0,
-                           train_freq=train_frequency, #Update the model every train_freq steps. Alternatively pass a tuple of frequency and unit like (5, "step") or (2, "episode").
+                           train_freq=frequencies[train_index], #Update the model every train_freq steps. Alternatively pass a tuple of frequency and unit like (5, "step") or (2, "episode").
                            learning_rate=lr_choice,
                            verbose=1) #, tensorGame_Controller_log=log_path) # alias of DQNPolicy # PPO
          # Set new logger

@@ -127,8 +127,10 @@ class Game_Controller(Env):
             round_winner = self.board.get_round_winner()
             if len(round_winner) == 1:
                 message = f"{round_winner[0]} won the round!"
+                logging.debug("%s won the %s. round", round_winner[0], self.board.round_number)
             else:
                 message = "Draw, no one won the round!"
+                logging.debug("Round %s was a draw",self.board.round_number)
             self.display.ask_prompt(message + " Press [Enter] to continue", [""])
         
         # game logic to end the round
