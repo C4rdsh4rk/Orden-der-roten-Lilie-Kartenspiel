@@ -12,7 +12,6 @@ from src.board import Board, Row
 from src.display import CardTable
 from src.cards import Booster
 
-
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
     
@@ -81,7 +80,6 @@ class Game_Controller(Env):
             a boolean indicating if the episode has been truncated, 
             a boolean indicating whether the episode has ended, 
             and a dictionary with additional information."""
-        action = action.item()
         self.steps+=1
         logging.debug("Step: %s", self.steps)
         logging.debug("Action: %s", action)
@@ -272,12 +270,19 @@ class Game_Controller(Env):
         # Incremental rewards for positive actions
         # For example, playing a card that increases the player's score or strategically passing
         #reward += 1 * self.board.player_states[player]["turn_score"]
-        won_rows = self.board.get_won_rows()
-        if self.board.has_passed(not player):
-            reward += 2 + (won_rows[int(not player)] - won_rows[int(player)])
-
+            
         for row, score in self.board.get_row_scores(player).items():
             reward += score
+
+        won_rows = self.board.get_won_rows()
+
+        if self.board.has_passed(not player):
+            if (-1*won_rows[int(not player)] + won_rows[int(player)])==1:
+                reward += win_reward
+            elif (-1*won_rows[int(not player)] + won_rows[int(player)])>1:
+                reward += win_reward/2
+            else:
+                reward -= win_reward*2
 
         self.rewards[player] += reward
         logging.debug("Reward: %s", self.rewards[player])

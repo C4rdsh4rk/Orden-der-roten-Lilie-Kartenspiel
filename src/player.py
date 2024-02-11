@@ -1,11 +1,9 @@
 from abc import ABC
 import random
-from colorama import Fore
 from src.row import Row
-from src.utils import get_user_input
+from src.utils import get_name
 from src.cards import Card
 from typing import Callable
-
 
 any_row_choice = {
     1: Row.FRONT,
@@ -15,20 +13,6 @@ any_row_choice = {
 class Player(ABC):
     def __init__(self, name):
         self.name = name
-
-    def display_deck(self,deck):
-        #clear_screen()
-        print(f"{self.name}'s Deck:")
-        for card in deck:
-            print(f"{card.name} ({card.strength})")
-
-    def display_hand(self):
-        #clear_screen()
-        print(f"{self.name}'s Hand:")
-        card_number=1
-        for card in self.hand:
-            print(f"|[{card_number}]{card.name} ({card.strength})| ", end="")
-            card_number+=1
 
     def make_pass_choice(self) -> bool:
         """
@@ -62,6 +46,7 @@ class Player(ABC):
 
 class Human(Player):
     def __init__(self, name: str, get_user_input: Callable):
+        #name = get_name()
         super().__init__(name)
         self.get_user_input = get_user_input
 
@@ -81,7 +66,7 @@ class Human(Player):
         )
         return row_choices[int(monkey_input) - 1]
 
-    def build_deck(self, booster):
+'''    def build_deck(self, booster):
         deck = []
         loop_flag = True
         auto_build_deck=get_user_input(
@@ -121,7 +106,7 @@ class Human(Player):
                 print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
-        return deck
+        return deck'''
 
 
 class ArtificialRetardation(Player):
@@ -143,7 +128,7 @@ class ArtificialRetardation(Player):
         else:
             self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]
         return self.passed
-
+'''
     def build_deck(self, booster):
         deck = []
         while True:
@@ -159,4 +144,4 @@ class ArtificialRetardation(Player):
                 #print("Value exceeds maximum deck strength, try again. (not your fault)")
                 # If adding the card exceeds the total strength constraint, try another card
                 continue
-        return deck
+        return deck'''
