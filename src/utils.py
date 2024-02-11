@@ -1,5 +1,5 @@
 import os
-
+from easygui import *
 
 def get_user_input(prompt, valid_choices):
     while True:
@@ -12,3 +12,6 @@ def get_user_input(prompt, valid_choices):
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear') # Clear screen for Linux and Windows
+
+def get_path(Title="Kartenspiel will wissen "):
+    return fileopenbox(Title)

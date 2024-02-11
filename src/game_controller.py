@@ -5,6 +5,7 @@ import numpy as np
 from gymnasium import Env, spaces
 import logging
 import time
+
 # local imports
 from src.player import Human,ArtificialRetardation
 from src.board import Board, Row
@@ -80,7 +81,7 @@ class Game_Controller(Env):
             a boolean indicating if the episode has been truncated, 
             a boolean indicating whether the episode has ended, 
             and a dictionary with additional information."""
-        action = int(action)
+        action = action.item()
         self.steps+=1
         logging.debug("Step: %s", self.steps)
         logging.debug("Action: %s", action)

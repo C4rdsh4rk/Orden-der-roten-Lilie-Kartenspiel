@@ -17,7 +17,7 @@ from stable_baselines3.common.logger import configure
 
 # local imports
 from src.game_controller import Game_Controller
-from src.utils import get_user_input
+from src.utils import get_user_input, get_path
 
 
 def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
@@ -32,7 +32,7 @@ def main():
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      model = QRDQN.load("QRDQN_Agent_218", env=env, print_system_info=True)
+      model = QRDQN.load(get_path("Which network should be loaded?"), env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
       while not env.done:
@@ -71,8 +71,8 @@ def main():
       model.save('QRDQNAgent_DUMB')
       evaluate_policy(model, env, n_eval_episodes=1, render=False)'''
 
-      model = QRDQN.load("QRDQN_Agent_218", env=env, print_system_info=True)
-      model.load_replay_buffer("QRDQNEVO_with_replay")
+      model = QRDQN.load(get_path("Which network should be loaded?"), env=env, print_system_info=True)
+      model.load_replay_buffer(get_path("Which replay buffer should be loaded?"))
       # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
       # in their name: only these ones affect the action.
       # NOTE: you can retrieve those parameters using model.get_parameters() too
