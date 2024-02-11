@@ -32,13 +32,14 @@ def main():
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      model = QRDQN.load("QRDQN_Agent_218", env=env, print_system_info=True)
+      model = QRDQN.load("QRDQN_Agent_220", env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
       while not env.done:
-           action, _states = model.predict(observation, deterministic=True)
-           observation, reward, truncates, done, info = env.step(action)
-           env.render()
+         action, _states = model.predict(observation, deterministic=True)
+         action = action.item()  # cast 0 dim array containing int
+         observation, reward, truncates, done, info = env.step(action)
+         env.render()
       env.close()
    elif int(input) == 2:
       raise NotImplementedError
