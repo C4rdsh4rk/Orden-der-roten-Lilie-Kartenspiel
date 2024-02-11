@@ -31,7 +31,7 @@ def main():
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      model = DQN.load("DQNAgent", env=env, print_system_info=True)
+      model = DQN.load("DQNAgentEVO", env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
       while not env.done:

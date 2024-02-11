@@ -116,7 +116,7 @@ class Game_Controller(Env):
             self.board.draw_cards_to_hand(True)
             self.board.draw_cards_to_hand(False)
 
-        truncated = self.steps == 50
+        truncated = self.steps == 100
 
         self.done = self.board.game_ended()
         if not self.training and self.done:
@@ -205,7 +205,7 @@ class Game_Controller(Env):
         row_scores = np.array(
             [score for row, score in self.board.get_row_scores(True).items()]+
             [score for row, score in self.board.get_row_scores(False).items()]
-        )
+        ).flatten()
         #graveyard = np.concatenate(self.board.get_graveyard(False).flatten())
         skip = 0
         state[skip:len(bot_board_card_vectors)] = bot_board_card_vectors
@@ -214,7 +214,7 @@ class Game_Controller(Env):
         skip += 114 # 38 * card vector of 3
         state[skip:skip+len(hand)] = hand
         skip += 114 # 38 * card vector of 3
-
+        state[skip:skip+len(row_scores)] = row_scores
         state[-3] = self.board.round_number             # 462
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
@@ -246,9 +246,12 @@ class Game_Controller(Env):
         if self.board.has_passed(not player):
             reward += 2 + (won_rows[int(not player)] - won_rows[int(player)])
 
-        self.rewards[player] = reward
-        logging.debug("Reward: %s", reward)
-        return self.rewards[player]
+        for row, score in self.board.get_row_scores(player).items():
+            reward += score
+
+        self.rewards[player] += reward
+        logging.debug("Reward: %s", self.rewards[player])
+        return reward
 
     def get_coin_flip(self):
         """Determine whether the first player starts by coin flip (True) or fixed order (False).
