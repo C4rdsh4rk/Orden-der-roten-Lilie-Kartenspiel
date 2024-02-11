@@ -26,3 +26,6 @@ def get_index(msg, choices, title="Orden der roten Lilie - Kartenspiel"):
 
 def get_name():
     return enterbox("What's your name?",title="Orden der roten Lilie - Kartenspiel")
+
+def get_choice(msg, choices, title="Orden der roten Lilie - Kartenspiel"):
+    return choicebox(msg, title, choices)

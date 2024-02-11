@@ -46,7 +46,7 @@ class Player(ABC):
 
 class Human(Player):
     def __init__(self, name: str, get_user_input: Callable):
-        #name = get_name()
+        name = get_name()
         super().__init__(name)
         self.get_user_input = get_user_input
 
