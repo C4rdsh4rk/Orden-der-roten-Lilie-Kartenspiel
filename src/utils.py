@@ -15,8 +15,8 @@ def clear_screen():
 def get_path(Title="Kartenspiel will wissen "):
     return fileopenbox(Title)
 
-def get_int(msg="Kartenspiel will wissen "):
-    return integerbox(msg, upperbound=1000000)
+def get_int(msg="Kartenspiel will wissen ",lowerbound=0):
+    return integerbox(msg, lowerbound=lowerbound, upperbound=1000000)
 
 def get_bool(msg, choices):
     return boolbox(msg,"Training",choices)

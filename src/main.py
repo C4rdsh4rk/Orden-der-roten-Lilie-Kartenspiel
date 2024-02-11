@@ -24,8 +24,8 @@ def main():
                   ['play','simulate [not implemented]','train'])
 
    # set up logger
-   log_path = os.path.join('logs', 'training')
-   new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
+   #log_path = os.path.join('logs', 'training')
+   #new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
 
    if index == 0:
       env = Game_Controller()
@@ -59,10 +59,9 @@ def main():
                            #seed=0,
                            train_freq=(1,"episode"), #Update the model every train_freq steps. Alternatively pass a tuple of frequency and unit like (5, "step") or (2, "episode").
                            learning_rate=0.05,
-                           tensorboard_log=new_logger,
                            verbose=1) #, tensorGame_Controller_log=log_path) # alias of DQNPolicy # PPO
          # Set new logger
-         model.set_logger(new_logger)
+         ##model.set_logger(new_logger)
          # Use traditional actor-critic policy gradient updates to
          # find good initial parameters
          model.learn(total_timesteps=timesteps)
@@ -82,7 +81,7 @@ def main():
       )
 
       ## START EVOLUTIONARY TRAINING
-      pop_size = get_int("How big should the population be?") # Population size
+      pop_size = get_int("How big should the population be?",10) # Population size
       # Keep top 10%
       n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
       # Retrieve the environment
