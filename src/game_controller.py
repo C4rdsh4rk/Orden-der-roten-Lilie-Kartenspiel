@@ -263,17 +263,21 @@ class Game_Controller(Env):
         Returns:
             float: The calculated reward based on the player's performance and actions.
         """
+
+        # Incremental rewards for positive actions
+        # For example, playing a card that increases the player's score or strategically passing
+
         reward = 0
         win_reward = 10
 
         # Reward for winning a round
         if self.board.get_rounds_won(player) > 0:
-            reward += win_reward * (self.board.get_rounds_won(player)
-                                    - self.board.get_rounds_won(not player))
+            reward += win_reward * (-1* self.board.get_rounds_won(not player)
+                                    + self.board.get_rounds_won(player)
+                                    )
+        if self.board.get_rounds_won(player) >= 2:
+            reward += win_reward * 5
 
-        # Incremental rewards for positive actions
-        # For example, playing a card that increases the player's score or strategically passing
-        #reward += 1 * self.board.player_states[player]["turn_score"]
             
         for row, score in self.board.get_row_scores(player).items():
             reward += score
@@ -285,8 +289,12 @@ class Game_Controller(Env):
                 reward += win_reward
             elif (-1*won_rows[int(not player)] + won_rows[int(player)])>1:
                 reward += win_reward/2
-            else:
-                reward -= win_reward*2
+            elif (-1*won_rows[int(not player)] + won_rows[int(player)])<1:
+                reward -= win_reward
+
+        if self.board.has_passed(player):
+            if won_rows[player]<won_rows[int(not player)]:
+                reward -= win_reward * 2
 
         self.rewards[player] += reward
         logging.debug("Reward: %s", self.rewards[player])

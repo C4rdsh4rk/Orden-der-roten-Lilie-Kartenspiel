@@ -12,11 +12,11 @@ def get_user_input(prompt, valid_choices):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear') # Clear screen for Linux and Windows
 
-def get_path(Title="Kartenspiel will wissen "):
-    return fileopenbox(Title)
+def get_path(title="Kartenspiel will wissen ", msg=None, filetypes=None):
+    return fileopenbox(msg=msg, title=title, default='*', filetypes=filetypes, multiple=False)
 
-def get_int(msg="Kartenspiel will wissen ",lowerbound=0):
-    return integerbox(msg, lowerbound=lowerbound, upperbound=1000000)
+def get_int(msg="Kartenspiel will wissen ",lowerbound=0, upperbound=1000000):
+    return integerbox(msg, lowerbound=lowerbound, upperbound=upperbound)
 
 def get_bool(msg, choices):
     return boolbox(msg,"Training",choices)
