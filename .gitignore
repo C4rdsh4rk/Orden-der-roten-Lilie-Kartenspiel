@@ -3,7 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Compressed files
+*.zip
+*.rar
+*.7z
+
 *.log
+*.csv
+*.tfevents*
+
+*gpt*
 
 # Environments
 .env
@@ -13,3 +22,12 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Networks
+*.pth
+*.pkl
+
+
+Training/*
+
+*get-pip.py

@@ -1,0 +1,109 @@
+
+    def step(self, ar_action): # network_active turn for gym
+        """Performs a step in the environment for network play, processing an action and updating the state.
+
+        Args:
+            ar_action (int): The action to be performed by the AI player.
+
+        Returns:
+            tuple: A tuple containing the new state, reward, done flag, and info dict.
+        """
+        self.play_turn(self.players[0],ar_action)
+        self.play_turn(self.players[1])
+        if self.players[0].passed and self.players[1].passed:
+            self.calculate_round_result()
+            self.round_number+=1
+            self.update_win_points()
+            self.clear_board()
+            self.done = (self.rounds_won1 >= 2 or self.rounds_won2 >= 2)
+        info = {} 
+        if self.done:
+            self.display_winner()
+        return self.get_state(), self.reward_function(self.players[0]), self.done, self.done, info
+    
+    def play_turn(self,player,ar_action=None): # Normal turn
+        """Executes a turn for the given player, optionally processing an AI action.
+
+        Args:
+            player (Player): The player whose turn it is.
+            ar_action (int, optional): The action to be performed if the player is an AI.
+
+        Note:
+            This method updates the game state based on the player's action and logs the turn.
+        """
+        player.turn_number+=1
+        logging.debug(f"\n{player.name}'s Turn:")
+        logging.debug(f"\nROUND: {self.round_number}")
+        logging.debug(f"{player.name}'s hand: {len(player.hand)}")
+        logging.debug(f"{player.name}'s turn: {player.turn_number}")
+        logging.debug("AR action: %s",ar_action)
+
+        if len(player.hand)==0:
+            player.passed = True
+            logging.debug(f"{player.name} has no cards left and PASSED")
+            logging.debug(f"{player.name} has no cards left and passed!")
+        if not ar_action==None and not player.passed:
+            logging.debug("AR_case")
+            if ar_action == 39: # max Deck length + passing option
+                player.passed = True
+                logging.debug("AR passed")
+            elif ar_action:
+                played_card = player.play_card()
+                logging.debug(f"AR played card: {played_card}")
+        if not player.passed and ar_action==None:
+            player.make_pass_choice()
+            if player.passed:
+                logging.debug(f"{player.name} passed")
+                logging.debug(f"{player.name} passed")
+            
+            played_card = player.play_card()
+            logging.debug(f"{player.name} played card: {played_card}")
+            self.render(self.players)
+            self.update_row_scores()
+        return
+#
+
+def
+        for player in self.players:
+                player.clear_board()
+                player.draw_cards_to_hand(2)
+                player.passed = False
+                logging.debug("{player.name} drew 2 cards. Rows were cleared.")
+        while True:
+            # Take turns playing cards
+            for player in self.players:
+                self.play_turn(player)
+                self.reward_function(player)
+                #self.render(self.players)
+            # Display the current score
+            print(f"\nCurrent Rows Won - {self.players[0].name}: {self.turn_score1}, {self.players[1].name}: {self.turn_score2}")
+            if self.players[0].passed and self.players[1].passed:
+                self.update_win_points()
+                break
+
+        self.calculate_round_result()
+        self.round_number += 1
+        self.done = (self.rounds_won1 >= 2 or self.rounds_won2 >= 2)
+
+
+
+    def board_loop(self) -> None:
+        """Runs the main game loop, playing through rounds until the game is concluded."""
+        
+        # Play three rounds
+        self.round_number = 1
+        while not self.done:
+            self.play_round()
+        self.display_winner()
+        self.reset_Board()
+
+
+    '''
+    while(True):
+        episodes=input(f"How many Boards should be played before training?")
+        episodes=int(episodes)
+        if isinstance(episodes,int) and episodes>0:
+            break
+        else:
+            print(f"Wrong input, try again")
+    '''
