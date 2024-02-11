@@ -29,3 +29,5 @@ venv.bak/
 
 
 Training/*
+
+*get-pip.py
