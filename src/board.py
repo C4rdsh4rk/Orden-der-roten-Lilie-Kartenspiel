@@ -387,6 +387,22 @@ class Board:
             winner += [self.player_states["bottom_player"]["name"]]
         return winner
 
+    def get_round_winner(self) -> list[str]:
+        """
+        Determines and the winner of the game based on the scores after one round.
+
+        Returns:
+            List[str]: list of winning players names (could be one or two, if draw)
+        """
+        winner = []
+        rows_top_player_won, rows_bottom_player_won = self.get_won_rows()
+
+        if rows_top_player_won >= rows_bottom_player_won:
+            winner += [self.get_player_name(False)]
+        if rows_top_player_won <= rows_bottom_player_won:
+            winner += [self.get_player_name(True)]
+        return winner
+
     def has_passed(self, bottom_player: bool) -> bool:
         """
         Method to check if a player has passed.

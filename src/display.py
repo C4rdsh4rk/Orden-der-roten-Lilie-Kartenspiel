@@ -183,9 +183,11 @@ class CardTable:
 
     def ask_prompt(self, prompt: str, choices) -> str:
         self.write_message(prompt + ":")
+        run_once = False  # we need this if we want the empty input. In that case we have to run the inner loop once
         key = ""
         add = ""
-        while key not in choices:
+        while key not in choices or not run_once:
+            run_once = True
             while True:
                 # the ' character has to be replaced due to a bug in the getchlib library (which returns "'character'" on windows instead of "character")
                 add = getchlib.getkey().replace("'", "") #Prompt.ask(prompt=prompt, choices=choices, console=self.layout["prompt_view"])

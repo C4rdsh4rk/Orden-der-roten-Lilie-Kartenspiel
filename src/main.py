@@ -36,9 +36,10 @@ def main():
       observation, _ = env.reset()
       env.render()
       while not env.done:
-           action, _states = model.predict(observation, deterministic=True)
-           observation, reward, truncates, done, info = env.step(action)
-           env.render()
+         action, _states = model.predict(observation, deterministic=True)
+         action = action.item()  # cast 0 dim array containing int
+         observation, reward, truncates, done, info = env.step(action)
+         env.render()
       env.close()
    elif int(input) == 2:
       raise NotImplementedError

@@ -90,6 +90,7 @@ class Game_Controller(Env):
         first_player_is_bottom_player = not self.coin_flip
 
         for player, is_bottom_player in zip(self.players, [first_player_is_bottom_player, not first_player_is_bottom_player]):
+            player_is_human = isinstance(player, Human)
             # we have already passed
             if self.board.has_passed(is_bottom_player):
                 continue
@@ -102,6 +103,9 @@ class Game_Controller(Env):
             # we are passing this turn
             if card_index == 0:
                 self.board.pass_round(is_bottom_player)
+                if not self.training and not player_is_human:
+                    self.display.write_sub_message(f"Player {self.board.get_player_name(is_bottom_player)} passed!")
+                    time.sleep(1.5)
                 continue
             card_index = card_index - 1
             # otherwise play card
@@ -110,10 +114,27 @@ class Game_Controller(Env):
             if played_row == Row.ANY:
                 played_row = player.make_row_choice(played_card, [Row.FRONT, Row.WISE, Row.SUPPORT])
             self.board.play_card(is_bottom_player, card_index, played_row) # (bool, card_index -> int, row (Enum))
-            if not self.training and not first_player_is_bottom_player:
+            # if AR played we want to delay the move by 0.5 seconds to make it look more natural
+            if not self.training and not player_is_human:
+                time.sleep(0.5)
+            # render the move of player one
+            if not self.training and player == self.players[0]:
                 self.render()
  
-        if self.board.has_passed(True) and self.board.has_passed(False):
+
+        round_over = self.board.has_passed(True) and self.board.has_passed(False)
+
+        # display round winner
+        if round_over and not self.training:
+            round_winner = self.board.get_round_winner()
+            if len(round_winner) == 1:
+                message = f"{round_winner[0]} won the round!"
+            else:
+                message = "Draw, no one won the round!"
+            self.display.ask_prompt(message + " Press [Enter] to continue", [""])
+        
+        # game logic to end the round
+        if round_over:
             self.board.end_round()
             self.board.draw_cards_to_hand(True)
             self.board.draw_cards_to_hand(False)
@@ -121,6 +142,8 @@ class Game_Controller(Env):
         truncated = self.steps == 100
 
         self.done = self.board.game_ended()
+
+        # display the game winner
         if not self.training and self.done:
             winner = self.board.get_winner()
             if len(winner) == 1:
