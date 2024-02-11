@@ -146,8 +146,10 @@ class Game_Controller(Env):
             winner = self.board.get_winner()
             if len(winner) == 1:
                 message = f"{winner[0]} won the game!"
+                logging.debug("%s WON", winner[0])
             else:
                 message = "Draw, no one won the game"
+                logging.debug("DRAW")
             self.display.write_message(message)
 
         observation = self.get_state()

@@ -38,14 +38,13 @@ def main():
          observation, reward, truncates, done, info = env.step(action)
          env.render()
       env.close()
-   elif int(index) == 1:
+   elif index == 1:
       raise NotImplementedError
    else:
       env = Game_Controller(True)
       observation, _ = env.reset()
       check_env(env, warn=True)
       observation, _ = env.reset()
-
 
       # set up logger
       log_path = os.path.join('logs', 'training')
@@ -70,10 +69,11 @@ def main():
          # find good initial parameters
          model.learn(total_timesteps=timesteps)
          model.save('QRDQNAgent_DUMB')
-         evaluate_policy(model, env, n_eval_episodes=1, render=False)
+         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
       else:
          model = QRDQN.load(get_path("Which network should be loaded?"), env=env, print_system_info=True)
          model.load_replay_buffer(get_path("Which replay buffer should be loaded?"))
+         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
 
       # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
       # in their name: only these ones affect the action.
@@ -90,7 +90,7 @@ def main():
       n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
       # Retrieve the environment
       vec_env = model.get_env()
-      prior_champion_fitness = 0
+      prior_champion_fitness = mean_reward
       for iteration in range(get_int("How many iterations?")):
          # Create population of candidates and evaluate them
          population = []
