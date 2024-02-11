@@ -2,12 +2,13 @@
 #import torch as th
 
 from typing import Dict
-
+import time
 import gymnasium as gym
 import numpy as np
 import torch as th
 
 import os
+from sb3_contrib import QRDQN
 from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -25,17 +26,17 @@ def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
 
 
 def main():
-   input = int(get_user_input("Do you want to play [1], simulate [2] or train a network [3]?",['1','2','3']))
+   input = int(get_user_input("Do you want to play [1], simulate [2] or train a network [3]? ",['1','2','3']))
    env = Game_Controller()
    if input == 1:
       # Load the trained agent
       # NOTE: if you have loading issue, you can pass `print_system_info=True`
       # to compare the system on which the model was trained vs the current one
-      model = DQN.load("DQNAgentEVO", env=env, print_system_info=True)
+      model = QRDQN.load("QRDQN_Agent_218", env=env, print_system_info=True)
       observation, _ = env.reset()
       env.render()
       while not env.done:
-           action, _states = None, None #  TODO: model.predict gives array not int??? model.predict(observation, deterministic=True)
+           action, _states = model.predict(observation, deterministic=True)
            observation, reward, truncates, done, info = env.step(action)
            env.render()
       env.close()
@@ -46,42 +47,32 @@ def main():
       observation, _ = env.reset()
       check_env(env, warn=True)
 
-      episodes = 1
       observation, _ = env.reset()
 
-      '''for episode in range(1, episodes+1):
-         done = False
-         score = 0 
-         while not done:
-               env.render()
-               action = env.action_space.sample()
-               observation, reward, truncated , done, info = env.step(action)
-         print(f"Episode:{episode} Score:{reward}")
-         observation = env.reset()'''
-
-      timesteps = 1000#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
+      timesteps = 100000#get_user_input("How many timesteps should be made for training?", list(range(1,100000)))
       # set up logger
       log_path = os.path.join('logs', 'training')
       new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
       '''
-      model = DQN("MlpPolicy",
+      model = QRDQN("MlpPolicy",
                      env,
                      #ent_coef=0.0,
                      #policy_kwargs={"net_arch": [32]},
                      #seed=0,
+                     train_freq=(1,"episode"), #Update the model every train_freq steps. Alternatively pass a tuple of frequency and unit like (5, "step") or (2, "episode").
                      learning_rate=0.05,
+                     tensorboard_log=new_logger,
                      verbose=1) #, tensorGame_Controller_log=log_path) # alias of DQNPolicy # PPO
       # Set new logger
       model.set_logger(new_logger)
       # Use traditional actor-critic policy gradient updates to
       # find good initial parameters
       model.learn(total_timesteps=timesteps)
-      model.save('DQNAgent')
+      model.save('QRDQNAgent_DUMB')
       evaluate_policy(model, env, n_eval_episodes=1, render=False)'''
 
-
-
-      model = DQN.load("DQNAgent_53", env=env, print_system_info=True)
+      model = QRDQN.load("QRDQN_Agent_218", env=env, print_system_info=True)
+      model.load_replay_buffer("QRDQNEVO_with_replay")
       # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
       # in their name: only these ones affect the action.
       # NOTE: you can retrieve those parameters using model.get_parameters() too
@@ -93,13 +84,13 @@ def main():
 
       ## START EVOLUTIONARY TRAINING
 
-      pop_size = 200 # Population size
+      pop_size = 100 # Population size
       # Keep top 10%
       n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
       # Retrieve the environment
       vec_env = model.get_env()
       prior_champion_fitness = 0
-      for iteration in range(500):
+      for iteration in range(100):
          # Create population of candidates and evaluate them
          population = []
          for population_i in range(pop_size):
@@ -126,9 +117,17 @@ def main():
          if top_candidates[0][1] > prior_champion_fitness:
             print("Saving new Champion")
             prior_champion_fitness = top_candidates[0][1]
-            model.policy.load_state_dict(top_candidates[0][0], strict=False)
-            model.save_replay_buffer(f"DQNEVO_with_replay_{prior_champion_fitness}")
-            model.save(f'DQNAgentEVO_{prior_champion_fitness}')
+            champion = top_candidates[0][0]
+            model.policy.load_state_dict(champion, strict=False)
+            model.save_replay_buffer("QRDQNEVO_replay")
+            name = "QRDQN_Agent_" + str(round(prior_champion_fitness))
+            model.save(name)
+            time.sleep(1)
+      # Save the policy independently from the model
+      # Note: if you don't save the complete model with `model.save()`
+      # you cannot continue training afterward
+      policy = model.policy
+      policy.save("Champion_Policy")
       print("Finished Training")
 
 if __name__ == "__main__":

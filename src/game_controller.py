@@ -80,6 +80,7 @@ class Game_Controller(Env):
             a boolean indicating if the episode has been truncated, 
             a boolean indicating whether the episode has ended, 
             and a dictionary with additional information."""
+        action = int(action)
         self.steps+=1
         logging.debug("Step: %s", self.steps)
         logging.debug("Action: %s", action)
@@ -129,7 +130,7 @@ class Game_Controller(Env):
 
         observation = self.get_state()
         reward = self.get_reward()
-
+        logging.debug("Round Number: %s",self.board.round_number)
         if truncated:
             logging.debug("TRUNCATED")
         return observation, reward, truncated , self.done, info
@@ -146,9 +147,14 @@ class Game_Controller(Env):
         # Reset the environment to its initial state
         super().reset(seed=seed)
         info = {}
+        self.rewards = {
+            True : 0,
+            False : 0
+            }
         self.board.reset()
         self.setup_hand_for_new_round()
         self._state = self.get_state()
+        logging.debug("NEW GAME")
         return self._state, info
 
     def render(self, mode='human'):
