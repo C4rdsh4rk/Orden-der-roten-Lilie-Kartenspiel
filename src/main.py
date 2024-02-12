@@ -63,9 +63,14 @@ def main():
       raise NotImplementedError
    else:
       env = Game_Controller(True)
-      enemy_model = QRDQN.load(get_path("Which network should be loaded as an opponent?", "Choose a zip file",["*.zip"]),
-                     env=env, print_system_info=True)
-      env.load_opponent_model(enemy_model)
+
+      if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
+         enemy_model = QRDQN.load(get_path("Which network should be loaded as an opponent?", "Choose a zip file",["*.zip"]),
+                        env=env, print_system_info=True)
+         env.load_opponent_model(enemy_model)
+      else:
+         enemy_model = None
+      
       observation, _ = env.reset()
       check_env(env, warn=True)
       observation, _ = env.reset()
@@ -114,9 +119,10 @@ def main():
          # Use traditional actor-critic policy gradient updates to
          # find good initial parameters
          model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
-         model.save(f"{save_path}\QRDQNAgent_DUMB")
-         model.save_replay_buffer(f"{save_path}\QRDQNAgent_DUMB_replay")
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
+         model.save(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
+         model.save_replay_buffer(f"{save_path}\QRDQNAgent_{mean_reward}")
+
       else:
          model = QRDQN.load(get_path("Which network should be loaded?", "Choose a zip file",["*.zip"]), env=env, print_system_info=True)
          model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
@@ -176,7 +182,6 @@ def main():
                #model.policy.load_state_dict(top_candidates[0][0], strict=False)
                #mean_reward, std_reward = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
                #if mean_reward > prior_mean_champion_fitness: #and std_reward > prior_std_champion_fitness:
-               print(top_candidates)
                print("Saving new Champion",end="")
                prior_mean_champion_fitness = top_candidates[0][1]
                name = "QRDQN_Agent_" + str(round(prior_mean_champion_fitness))

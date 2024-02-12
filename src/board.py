@@ -369,23 +369,21 @@ class Board:
             bottom_score += int(scores_top[row] <= scores_bottom[row])
 
         return top_score, bottom_score
-
-    def get_winner(self) -> list[str]:
+    
+    def get_winner(self) -> list[bool]:
         """
         Determines and the winner of the game based on the final scores.
 
         Returns:
-            List[str]: list of winning players names (could be one or two, if draw)
+            List[bool]: list of winning players (top, bottom) where True indicates a win
         """
-        winner = []
+        winners = [False, False]
         rounds_top_player_won = self.player_states["top_player"]["rounds_won"]
         rounds_bottom_player_won = self.player_states["bottom_player"]["rounds_won"]
 
-        if rounds_top_player_won >= rounds_bottom_player_won:
-            winner += [self.player_states["top_player"]["name"]]
-        if rounds_top_player_won <= rounds_bottom_player_won:
-            winner += [self.player_states["bottom_player"]["name"]]
-        return winner
+        winners[0] = (rounds_top_player_won >= rounds_bottom_player_won)
+        winners[1] = (rounds_top_player_won <= rounds_bottom_player_won)
+        return winners
 
     def get_round_winner(self) -> list[str]:
         """
@@ -468,4 +466,4 @@ if __name__ == '__main__':
     board.player_states["bottom_player"]["rounds_won"] = 1
     if board.game_ended():
         winner = board.get_winner()
-        assert len(winner) == 1 and winner[0] == "Hungriger"
+        assert len(winner) == 2 and winner[0] == True and winner[1] == False

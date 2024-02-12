@@ -129,10 +129,15 @@ class Game_Controller(Env):
  
 
         round_over = self.board.has_passed(True) and self.board.has_passed(False)
+        round_winner = self.board.get_round_winner()
+        # let winner start
+        if round_over and self.board.get_player_name(self.players[0][1]) not in self.board.get_round_winner():
+            self.players.reverse()
+        elif self.get_coin_flip():
+            self.players.reverse()
 
         # display round winner
         if round_over and not self.training:
-            round_winner = self.board.get_round_winner()
             if len(round_winner) == 1:
                 message = f"{round_winner[0]} won the round!"
                 logging.debug("%s won the %s. round", round_winner[0], self.board.round_number)
@@ -154,8 +159,11 @@ class Game_Controller(Env):
         # display the game winner
         if not self.training and self.done:
             winner = self.board.get_winner()
-            if len(winner) == 1:
-                message = f"{winner[0]} won the game!"
+            if winner[0] and not winner[1]:
+                message = f"{self.board.get_player_name(False)} won the game!"
+                logging.debug("%s WON", winner[0])
+            elif winner[1] and not winner[0]:
+                message = f"{self.board.get_player_name(True)} won the game!"
                 logging.debug("%s WON", winner[0])
             else:
                 message = "Draw, no one won the game"
@@ -289,7 +297,7 @@ class Game_Controller(Env):
 
         # Simplify game outcome rewards to be more generous
         if game_ended:
-            reward += 100.0 if self.board.get_player_name(is_bottom_player) in winners else 0  # Reward for game end, no penalty for losing
+            reward += 100.0 if winners[int(is_bottom_player)] else 0  # Reward for game end, no penalty for losing
 
         # Provide rewards for each won row, reducing complexity in calculation
         reward += player_won_rows * 20  # Reward for each won row, making it simpler
