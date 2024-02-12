@@ -254,52 +254,6 @@ class Game_Controller(Env):
         self._state = state
         return self._state
 
-    def get_reward(self, player=True):
-        """Calculates and returns the reward for a given player's actions.
-
-        Args:
-            player (boolean): The player for whom to calculate the reward.
-
-        Returns:
-            float: The calculated reward based on the player's performance and actions.
-        """
-
-        # Incremental rewards for positive actions
-        # For example, playing a card that increases the player's score or strategically passing
-
-        reward = 0
-        win_reward = 10
-
-        # Reward for winning a round
-        if self.board.get_rounds_won(player) > 0:
-            reward += win_reward * (-1* self.board.get_rounds_won(not player)
-                                    + self.board.get_rounds_won(player)
-                                    )
-        if self.board.get_rounds_won(player) >= 2:
-            reward += win_reward * 5
-
-            
-        for row, score in self.board.get_row_scores(player).items():
-            reward += score
-
-        won_rows = self.board.get_won_rows()
-
-        if self.board.has_passed(not player):
-            if (-1*won_rows[int(not player)] + won_rows[int(player)])==1:
-                reward += win_reward
-            elif (-1*won_rows[int(not player)] + won_rows[int(player)])>1:
-                reward += win_reward/2
-            elif (-1*won_rows[int(not player)] + won_rows[int(player)])<1:
-                reward -= win_reward
-
-        if self.board.has_passed(player):
-            if won_rows[player]<won_rows[int(not player)]:
-                reward -= win_reward * 2
-
-        self.rewards[player] += reward
-        logging.debug("Reward: %s", self.rewards[player])
-        return reward
-
     def get_coin_flip(self):
         """Determine whether the first player starts by coin flip (True) or fixed order (False).
     
@@ -309,4 +263,50 @@ class Game_Controller(Env):
 
     def close(self):
         self.display.stop_render()
-    
+    #####################################################################################################
+    def get_reward(self, player=True):
+        """
+        Calculate the reward for the agent's current state.
+        
+        Rewards are given based on the following:
+        - Winning a round
+        - Winning more rows than the opponent in a round
+        - Winning the game
+        - Penalize for losing a round or the game
+        - Small incentive for each row won in the current state, encouraging the agent to maintain or gain an advantage in ongoing rounds.
+
+        Returns:
+            float: The calculated reward.
+        """
+        reward = 0.0
+
+        if player:
+            player = "top_player"
+            enemy = "bottom_player"
+        else:
+            player = "bottom_player"
+            enemy = "top_player"
+        # Check if the game has ended
+        game_ended = self.board.game_ended()
+        if game_ended:
+            winners = self.board.get_winner()
+            if self.board.player_states[player]["name"] in winners:  # Assuming the agent is always the top player
+                reward += 100.0  # Big reward for winning the game
+            else:
+                reward -= 50.0  # Penalty for losing the game
+
+        # Reward for winning the current/last round
+        round_winner = self.board.get_round_winner()
+        if self.board.player_states[player]["name"] in round_winner:
+            reward += 20.0  # Reward for winning a round
+        elif round_winner:  # There's a winner but it's not the agent
+            reward -= 10.0  # Penalty for losing a round
+
+        # Incremental rewards for winning rows
+        rows_top_player_won, rows_bottom_player_won = self.board.get_won_rows()
+        reward += (rows_top_player_won - rows_bottom_player_won) * 5  # Reward based on the net won rows
+
+        # Small penalty for each step to encourage efficiency
+        reward -= 0.1
+
+        return reward

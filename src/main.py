@@ -48,23 +48,40 @@ def main():
 
       # set up logger
       log_path = os.path.join('logs', 'training')
-      new_logger = configure(log_path, ["stdout", "csv", "tensorboard"])
+      new_logger = configure(log_path, ["stdout", "tensorboard"])
 
       if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
-         timesteps = get_int("How many timesteps should be made for the first training?", 0, 50000)
-         lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005, 0.0005, 0.00005])
+         timesteps = get_int("How many timesteps should be made for the first training?", 0, 5000000)
+         lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005, 0.0005, 0.0001, 0.00005])
          lr_choice = float(lr_choice)
          train_index = get_index("In what interval should the networks weights be adjusted?",
-                                      ["1/episode","1/step"])
-         frequencies = [(1,"episode"),(1, "step")]
+                                      ["1,episode","2,episode","3,episode","4,episode","1, step","2, step","3, step","4, step"])
+         frequencies = [(1,"episode"),(2,"episode"),(3,"episode"),(4,"episode"),(1, "step"),(2, "step"),(3, "step"),(4, "step")]
          model = QRDQN("MlpPolicy",
-                           env,
-                           #ent_coef=0.0,
-                           #policy_kwargs={"net_arch": [32]},
-                           #seed=0,
-                           train_freq=frequencies[train_index], #Update the model every train_freq steps. Alternatively pass a tuple of frequency and unit like (5, "step") or (2, "episode").
-                           learning_rate=lr_choice,
-                           verbose=1) #, tensorGame_Controller_log=log_path) # alias of DQNPolicy # PPO
+                        env,
+                        learning_rate=lr_choice,
+                        buffer_size=1000000,
+                        learning_starts=100,
+                        batch_size=32,
+                        tau=1.0,
+                        gamma=0.99,
+                        train_freq=frequencies[train_index],
+                        gradient_steps=1,
+                        replay_buffer_class=None,
+                        replay_buffer_kwargs=None,
+                        optimize_memory_usage=False,
+                        target_update_interval=10000,
+                        exploration_fraction=0.1,
+                        exploration_initial_eps=1.0,
+                        exploration_final_eps=0.05,
+                        max_grad_norm=10,
+                        stats_window_size=100,
+                        tensorboard_log=None,
+                        policy_kwargs=None,
+                        verbose=1,
+                        seed=None,
+                        device='auto',
+                        _init_setup_model=True)
          # Set new logger
          model.set_logger(new_logger)
          # Use traditional actor-critic policy gradient updates to
@@ -118,7 +135,7 @@ def main():
          )
          mean_fitness = sum(top_candidate[1] for top_candidate in top_candidates) / n_elite
          print(f"Iteration {iteration + 1:<3} Mean top fitness: {mean_fitness:.2f}")
-         print(f"Best fitness this iteration: {top_candidates[0][1]:.2f} vs Champion: {prior_mean_champion_fitness}")
+         print(f"Best fitness this iteration: {top_candidates[0][1]:.2f} vs Champion: {prior_mean_champion_fitness:.2f}")
          if top_candidates[0][1] > prior_mean_champion_fitness:
             #model.policy.load_state_dict(top_candidates[0][0], strict=False)
             #mean_reward, std_reward = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
