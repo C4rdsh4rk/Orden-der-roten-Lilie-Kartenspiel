@@ -121,7 +121,7 @@ def main():
          model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
          model.save(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
-         model.save_replay_buffer(f"{save_path}\QRDQNAgent_{mean_reward}")
+         model.save_replay_buffer(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
 
       else:
          model = QRDQN.load(get_path("Which network should be loaded?", "Choose a zip file",["*.zip"]), env=env, print_system_info=True)

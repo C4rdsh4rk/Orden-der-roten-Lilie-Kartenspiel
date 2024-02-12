@@ -313,5 +313,5 @@ class Game_Controller(Env):
         # Strategic passing: provide a reward for passing, encouraging strategic timing without penalties
         if self.board.has_passed(is_bottom_player):
             reward += 10  # Flat reward for passing, encouraging strategic play
-
+        reward = reward/10
         return reward
