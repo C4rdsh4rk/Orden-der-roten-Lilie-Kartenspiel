@@ -124,7 +124,7 @@ class Game_Controller(Env):
             if not self.training and not player_is_human:
                 time.sleep(0.5)
             # render the move of player one
-            if not self.training and player == self.players[0]:
+            if not self.training and player == self.players[0][2]:
                 self.render()
  
 
@@ -133,7 +133,7 @@ class Game_Controller(Env):
         # let winner start
         if round_over and self.board.get_player_name(self.players[0][1]) not in self.board.get_round_winner():
             self.players.reverse()
-        elif self.get_coin_flip():
+        elif round_over and self.get_coin_flip():
             self.players.reverse()
 
         # display round winner
