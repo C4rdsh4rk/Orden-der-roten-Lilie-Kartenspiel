@@ -112,7 +112,7 @@ def main():
          # find good initial parameters
          model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
          model.save(f"{save_path}\QRDQNAgent_DUMB")
-         model.save_replay_buffer("QRDQNAgent_DUMB_replay")
+         model.save_replay_buffer(f"{save_path}\QRDQNAgent_DUMB_replay")
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
       else:
          model = QRDQN.load(get_path("Which network should be loaded?", "Choose a zip file",["*.zip"]), env=env, print_system_info=True)
@@ -173,14 +173,16 @@ def main():
                #model.policy.load_state_dict(top_candidates[0][0], strict=False)
                #mean_reward, std_reward = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
                #if mean_reward > prior_mean_champion_fitness: #and std_reward > prior_std_champion_fitness:
-               print("Saving new Champion")
-               name = "QRDQN_Agent_" + str(round(prior_mean_champion_fitness))
+               print(top_candidates)
+               print("Saving new Champion",end="")
                prior_mean_champion_fitness = top_candidates[0][1]
+               name = "QRDQN_Agent_" + str(round(prior_mean_champion_fitness))
                champion = top_candidates[0][0]
                model.policy.load_state_dict(champion, strict=False)
                model.save_replay_buffer(f"{save_path}\{name}")
                model.save(f"{save_path}\{name}")
                time.sleep(1)
+               print(" - saved")
 
       # Save the policy independently from the model
       # Note: if you don't save the complete model with `model.save()`
