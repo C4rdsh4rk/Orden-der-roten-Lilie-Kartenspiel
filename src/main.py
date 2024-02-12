@@ -63,6 +63,9 @@ def main():
       raise NotImplementedError
    else:
       env = Game_Controller(True)
+      enemy_model = QRDQN.load(get_path("Which network should be loaded as an opponent?", "Choose a zip file",["*.zip"]),
+                     env=env, print_system_info=True)
+      env.load_opponent_model(enemy_model)
       observation, _ = env.reset()
       check_env(env, warn=True)
       observation, _ = env.reset()

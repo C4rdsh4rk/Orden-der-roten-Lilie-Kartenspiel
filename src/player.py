@@ -20,7 +20,7 @@ class Player(ABC):
         """
         raise NotImplementedError
 
-    def make_card_choice(self, valid_actions: list, action=None) -> Card:
+    def make_card_choice(self, valid_actions: list, env, action=None) -> Card:
         """
         Interface function that must return exactly one card that is played by the player.
         The card must be in the valid_choices.
@@ -50,7 +50,7 @@ class Human(Player):
         super().__init__(name)
         self.get_user_input = get_user_input
 
-    def make_choice(self, valid_actions, action=None):
+    def make_choice(self, valid_actions, env, action=None):
         valid_actions = [str(x+1) for x in valid_actions] # User friendly numbers
         valid_actions += ["0"]
         if len(valid_actions)==1:
@@ -110,14 +110,20 @@ class Human(Player):
 
 
 class ArtificialRetardation(Player):
-    def __init__(self, name):
+    def __init__(self, name, model=None):
         super().__init__(name)
+        self.model = model
 
-    def make_choice(self, valid_choices, action=None):
-        if action is not None:
-            return action
-        else:
-            return int(random.choice(valid_choices)) # Monke
+    def make_choice(self, valid_actions, env, action=None):
+        is_bottom_player = [player for player in env.players if player[2]==self][0][1]
+        if self.model and not action:
+            action, _states = self.model.predict(env.get_state(is_bottom_player), deterministic=True)
+        elif not self.model:
+            action = int(random.choice(valid_actions)) # Monke
+
+        if action and action >= len(env.board.get_hand(is_bottom_player))+1: # Check for valid card index
+            action = 0
+        return action
 
     def make_row_choice(self, card, row_choices: list[Row]) -> Row:
         return random.choice(list(row_choices))

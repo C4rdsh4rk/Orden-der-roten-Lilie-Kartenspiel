@@ -33,24 +33,30 @@ class Game_Controller(Env):
         # Initialize state
         self._state = None
         self.done = False
-        self.coin_flip = self.get_coin_flip()
-        self.turn_indicator = self.coin_flip
+        reverse_player_order = self.get_coin_flip()
+
+        uses_action = True
+        is_bottom_player = True
+        
         if training:
-            self.players =  [
-                ArtificialRetardation("Trained Monkey"),
-                ArtificialRetardation("Clueless Robot")
-                ]
+            self.players = [
+                (uses_action, is_bottom_player, ArtificialRetardation("Trained Monkey")),                   # Trainee
+                (not uses_action, not is_bottom_player, ArtificialRetardation("Clueless Robot"))     # Opponent
+            ]
         else:
             self.display.start_render()
             self.players =  [
-                ArtificialRetardation("Clueless Robot"),
-                Human("IQ Test Subject", self.display.ask_prompt)
+                (uses_action, not is_bottom_player, ArtificialRetardation("Clueless Robot")),
+                (not uses_action, is_bottom_player, Human("IQ Test Subject", self.display.ask_prompt))
             ]
 
-        self.board = Board(self.players[0].name, self.players[1].name)
-
-        if not self.coin_flip:
+        if reverse_player_order:
             self.players.reverse()
+
+        bottom_name = [player for player in self.players if player[1]][0][2].name
+        top_name = [player for player in self.players if not player[1]][0][2].name
+
+        self.board = Board(top_name, bottom_name)
 
         self.rewards = {
             True : 0,
@@ -61,6 +67,10 @@ class Game_Controller(Env):
 
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
+
+    def load_opponent_model(self, opponent_model):
+        opponent = [player for player in self.players if not player[0]][0][2]
+        opponent.model = opponent_model
 
     def setup_hand_for_new_round(self) -> None:
         self.board.set_deck(True, Booster().open(20))
@@ -84,20 +94,18 @@ class Game_Controller(Env):
         logging.debug("Step: %s", self.steps)
         logging.debug("Action: %s", action)
         info = {}
-        # Note: if not coinflip, human begins
-        first_player_is_bottom_player = not self.coin_flip
 
-        for player, is_bottom_player in zip(self.players, [first_player_is_bottom_player, not first_player_is_bottom_player]):
+        for uses_action, is_bottom_player, player in self.players:
             player_is_human = isinstance(player, Human)
             # we have already passed
             if self.board.has_passed(is_bottom_player):
                 continue
-            
-            if action and action >= len(self.board.get_hand(is_bottom_player))+1:
-                action = 0
 
-            card_index = player.make_choice(self.board.get_valid_choices(is_bottom_player),
-                                            action=action)
+            card_index = player.make_choice(
+                self.board.get_valid_choices(is_bottom_player),
+                self,
+                action=action if uses_action else None
+            )
             # we are passing this turn
             if card_index == 0:
                 self.board.pass_round(is_bottom_player)
@@ -179,7 +187,7 @@ class Game_Controller(Env):
             }
         self.board.reset()
         self.setup_hand_for_new_round()
-        self._state = self.get_state()
+        self._state = self.get_state(True)
         logging.debug("NEW GAME")
         return self._state, info
 
@@ -204,7 +212,7 @@ class Game_Controller(Env):
                 bottom_player
             )
 
-    def get_state(self, action = 0): # AR will always be player flag False
+    def get_state(self, is_bottom_player, action = 0): # AR will always be player flag False
         """Return the current state of the environment.
     
         Returns:
@@ -218,6 +226,7 @@ class Game_Controller(Env):
         # current round 1
         # action feedback
         # = 466
+
 
         state = np.zeros((466,), dtype=np.uint8)
         
@@ -233,7 +242,7 @@ class Game_Controller(Env):
         ], dtype=np.uint8).flatten()
 
         hand = np.array([
-            card.get_card_vector() for card in self.board.get_hand(False)
+            card.get_card_vector() for card in self.board.get_hand(True)
         ], dtype=np.uint8).flatten()
         row_scores = np.array(
             [score for row, score in self.board.get_row_scores(True).items()]+
@@ -266,38 +275,35 @@ class Game_Controller(Env):
     def close(self):
         self.display.stop_render()
     #####################################################################################################
-    def get_reward(self, player=True):
+    def get_reward(self, is_bottom_player=True):
         """
         Simplified and more generous reward calculation to encourage learning and strategic gameplay.
         Provides more frequent and significant rewards for actions, with reduced penalties.
         """
         reward = 0.0
-
-        player_key = "bottom_player" if player else "top_player"
-        opponent_key = "top_player" if player else "bottom_player"
         
         game_ended = self.board.game_ended()
         winners = self.board.get_winner()
         round_winner = self.board.get_round_winner()
-        player_won_rows, opponent_won_rows = self.board.get_won_rows() if player else reversed(self.board.get_won_rows())
+        player_won_rows, opponent_won_rows = self.board.get_won_rows() if is_bottom_player else reversed(self.board.get_won_rows())
 
         # Simplify game outcome rewards to be more generous
         if game_ended:
-            reward += 100.0 if self.board.player_states[player_key]["name"] in winners else 0  # Reward for game end, no penalty for losing
+            reward += 100.0 if self.board.get_player_name(is_bottom_player) in winners else 0  # Reward for game end, no penalty for losing
 
         # Provide rewards for each won row, reducing complexity in calculation
         reward += player_won_rows * 20  # Reward for each won row, making it simpler
 
         # Round victory considerations: more straightforward reward
-        if self.board.player_states[player_key]["name"] in round_winner:
+        if self.board.get_player_name(is_bottom_player) in round_winner:
             reward += 20.0  # Simplified reward for winning a round
 
         # Encourage card playing: provide a flat reward for playing cards, without penalizing holding cards
-        cards_played = 10 - len(self.board.get_hand(player))  # Assuming 10 is the starting hand count
+        cards_played = 10 - len(self.board.get_hand(is_bottom_player))  # Assuming 10 is the starting hand count
         reward += cards_played * 2  # Reward for each card played
 
         # Strategic passing: provide a reward for passing, encouraging strategic timing without penalties
-        if self.board.has_passed(player):
+        if self.board.has_passed(is_bottom_player):
             reward += 10  # Flat reward for passing, encouraging strategic play
 
         return reward
