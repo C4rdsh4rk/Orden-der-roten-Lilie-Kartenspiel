@@ -29,7 +29,7 @@ class Game_Controller(Env):
         self.display = CardTable()
         # Define action and observation space
         self.action_space = spaces.Discrete(40)  # Example: two possible actions - 0 or 1
-        self.observation_space = spaces.Box(low=0, high=50, shape=(465,), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0, high=50, shape=(466,), dtype=np.uint8)
         # Initialize state
         self._state = None
         self.done = False
@@ -154,7 +154,7 @@ class Game_Controller(Env):
                 logging.debug("DRAW")
             self.display.write_message(message)
 
-        observation = self.get_state()
+        observation = self.get_state(action)
         reward = self.get_reward()
         logging.debug("Round Number: %s",self.board.round_number)
         if truncated:
@@ -204,7 +204,7 @@ class Game_Controller(Env):
                 bottom_player
             )
 
-    def get_state(self): # AR will always be player flag False
+    def get_state(self, action = 0): # AR will always be player flag False
         """Return the current state of the environment.
     
         Returns:
@@ -216,9 +216,10 @@ class Game_Controller(Env):
         # turn score 6 +
         # rounds won 2 +
         # current round 1
-        # = 465
+        # action feedback
+        # = 466
 
-        state = np.zeros((465,), dtype=np.uint8)
+        state = np.zeros((466,), dtype=np.uint8)
         
         top_board_cards = list(chain(*list(self.board.get_half_board(False).values())))
         bottom_board_cards = list(chain(*list(self.board.get_half_board(True).values())))
@@ -247,6 +248,7 @@ class Game_Controller(Env):
         state[skip:skip+len(hand)] = hand
         skip += 114 # 38 * card vector of 3
         state[skip:skip+len(row_scores)] = row_scores
+        state[-4] = action 
         state[-3] = self.board.round_number             # 462
         state[-2] = self.board.get_rounds_won(True)     # 463
         state[-1] = self.board.get_rounds_won(False)    # 464
@@ -266,47 +268,36 @@ class Game_Controller(Env):
     #####################################################################################################
     def get_reward(self, player=True):
         """
-        Calculate the reward for the agent's current state.
-        
-        Rewards are given based on the following:
-        - Winning a round
-        - Winning more rows than the opponent in a round
-        - Winning the game
-        - Penalize for losing a round or the game
-        - Small incentive for each row won in the current state, encouraging the agent to maintain or gain an advantage in ongoing rounds.
-
-        Returns:
-            float: The calculated reward.
+        Simplified and more generous reward calculation to encourage learning and strategic gameplay.
+        Provides more frequent and significant rewards for actions, with reduced penalties.
         """
         reward = 0.0
 
-        if player:
-            player = "top_player"
-            enemy = "bottom_player"
-        else:
-            player = "bottom_player"
-            enemy = "top_player"
-        # Check if the game has ended
+        player_key = "bottom_player" if player else "top_player"
+        opponent_key = "top_player" if player else "bottom_player"
+        
         game_ended = self.board.game_ended()
-        if game_ended:
-            winners = self.board.get_winner()
-            if self.board.player_states[player]["name"] in winners:  # Assuming the agent is always the top player
-                reward += 100.0  # Big reward for winning the game
-            else:
-                reward -= 50.0  # Penalty for losing the game
-
-        # Reward for winning the current/last round
+        winners = self.board.get_winner()
         round_winner = self.board.get_round_winner()
-        if self.board.player_states[player]["name"] in round_winner:
-            reward += 20.0  # Reward for winning a round
-        elif round_winner:  # There's a winner but it's not the agent
-            reward -= 10.0  # Penalty for losing a round
+        player_won_rows, opponent_won_rows = self.board.get_won_rows() if player else reversed(self.board.get_won_rows())
 
-        # Incremental rewards for winning rows
-        rows_top_player_won, rows_bottom_player_won = self.board.get_won_rows()
-        reward += (rows_top_player_won - rows_bottom_player_won) * 5  # Reward based on the net won rows
+        # Simplify game outcome rewards to be more generous
+        if game_ended:
+            reward += 100.0 if self.board.player_states[player_key]["name"] in winners else 0  # Reward for game end, no penalty for losing
 
-        # Small penalty for each step to encourage efficiency
-        reward -= 0.1
+        # Provide rewards for each won row, reducing complexity in calculation
+        reward += player_won_rows * 20  # Reward for each won row, making it simpler
+
+        # Round victory considerations: more straightforward reward
+        if self.board.player_states[player_key]["name"] in round_winner:
+            reward += 20.0  # Simplified reward for winning a round
+
+        # Encourage card playing: provide a flat reward for playing cards, without penalizing holding cards
+        cards_played = 10 - len(self.board.get_hand(player))  # Assuming 10 is the starting hand count
+        reward += cards_played * 2  # Reward for each card played
+
+        # Strategic passing: provide a reward for passing, encouraging strategic timing without penalties
+        if self.board.has_passed(player):
+            reward += 10  # Flat reward for passing, encouraging strategic play
 
         return reward
