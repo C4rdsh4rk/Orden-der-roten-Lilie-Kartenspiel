@@ -274,6 +274,12 @@ class Board:
             card (int): index of the card that is played (index in hand)
             row (Row): row in which the card is played
         """
+        if row==Row.ANY:
+            row = random.choice([
+                        Row.FRONT,
+                        Row.WISE,
+                        Row.SUPPORT])
+
         played_card = self.get_hand(bottom_player)[card_index]
         # special case if effect card
         if isinstance(played_card, EffectCard):
