@@ -75,10 +75,10 @@ class Game_Controller(Env):
     def setup_hand_for_new_round(self) -> None:
         #self.board.set_deck(True, Booster().open(20))
         self.board.set_deck(True, Starter().open())
-        self.board.draw_cards_to_hand(True, 10)
+        self.board.draw_cards_to_hand(True, 10, True)
         #self.board.set_deck(False, Booster().open(20))
         self.board.set_deck(False, Starter().open())
-        self.board.draw_cards_to_hand(False, 10)
+        self.board.draw_cards_to_hand(False, 10, True)
 
     def step(self, action):
         """Update the environment based on the provided action and return the new observation, reward, etc.

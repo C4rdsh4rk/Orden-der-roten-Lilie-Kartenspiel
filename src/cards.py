@@ -15,7 +15,6 @@ class CardName(Enum):
     SUMMON = 7
     REVIVE = 8
 
-
 class Card:  
     def __init__(self, name: CardName, strength: int, row_restriction=Row | None):
         self.name = name
@@ -27,7 +26,6 @@ class Card:
 
     def __str__(self):
         return f"{self.name} (Str: {self.strength}, Row: {self.type})"
-
 
 class EffectCard(Card, ABC):
     def __init__(self, name: CardName, strength: int, row_restriction=Row | None):
@@ -71,7 +69,6 @@ class Burn(EffectCard):
         target_index = get_index("Which card do you want to burn?", [card_info[0] for card_info in targets], "Burn Effect")
         _, row, card_row_index = targets[target_index]
         env.remove_card_from_board(not bottom_player, card_row_index, row)
-
 
 class Summon(EffectCard):
     def __init__(self, name):
@@ -130,16 +127,17 @@ class Starter:
         ]
         self.defined_deck = []
 
-        #strenghts = [1,2,2,3,4]
-        strenghts = [3, 4]
+        strenghts = [1,2,2,3,4]
+        #strenghts = [2, 3, 4]
+        self.defined_deck.append(Revive("REVIVE"))
+        self.defined_deck.append(Summon("SUMMON"))
         for strength  in strenghts:
             self.defined_deck.append(Card("KNIGHT", strength, Row.FRONT))
             self.defined_deck.append(Card("CLERIC", strength, Row.WISE))
             self.defined_deck.append(Card("HEALER", strength, Row.SUPPORT))
         #self.defined_deck.append()
         self.defined_deck.append(Card("HERO", 5, Row.ANY))
-        self.defined_deck.append(Revive("REVIVE"))
-        self.defined_deck.append(Summon("SUMMON"))
+
 
     def open(self):
         return self.defined_deck
