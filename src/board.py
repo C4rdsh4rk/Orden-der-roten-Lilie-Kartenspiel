@@ -3,7 +3,7 @@ import random
 from itertools import chain
 # local imports
 from src.row import Row
-from src.cards import Card, EffectCard, Booster
+from src.cards import Card, EffectCard, Booster, Starter
 
 
 class Board:
@@ -150,6 +150,18 @@ class Board:
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["graveyard"]
 
+    def set_graveyard(self, bottom_player: bool, hand: list[Card]) -> None:
+        """
+        Method to set the graveyard of a player. If bottom player the graveyard of
+        the bottom player will be returned, otherwise the graveyard of the
+        top player will be returned
+
+        Args:
+            bottom_player (bool): Indicate which players graveyard to get. True for bottom players deck
+        """
+        player_identifier = self._get_player_identifier(bottom_player)
+        self.player_states[player_identifier]["graveyard"] = graveyard
+
     def get_rounds_won(self, bottom_player: bool) -> None:
         """
         Method to get the rounds won of a player. 
@@ -241,6 +253,17 @@ class Board:
         self.set_hand(bottom_player, self.get_hand(bottom_player) + self.get_deck(bottom_player)[:actually_drawn])
         # Remove drawn cards from the deck
         self.set_deck(bottom_player, self.get_deck(bottom_player)[actually_drawn:])
+    
+    def draw_cards_from_graveyard(self, bottom_player: bool, num_cards=1) -> None:
+        """Allows a player to draw a specified number of cards into their hand from the graveyard.
+        Args:
+            bottom_player: The player who will draw cards.
+            num_cards (int, optional): The number of cards to draw. Defaults to 2.
+        """
+        actually_drawn = min(len(self.get_graveyard(bottom_player)), num_cards)
+        self.set_hand(bottom_player, self.get_hand(bottom_player) + self.get_graveyard(bottom_player)[:actually_drawn])
+        # Remove drawn cards from the deck
+        self.set_graveyard(bottom_player, self.get_graveyard(bottom_player)[actually_drawn:])
 
     def play_card(self, bottom_player, card_index, row) -> None:
         """
@@ -255,7 +278,7 @@ class Board:
         # special case if effect card
         if isinstance(played_card, EffectCard):
             played_card.execute_effect(self, bottom_player)
-        else:
+        if played_card.type != Row.EFFECTS:
             # **PLEASE LEAVE AS IS, is using += the function adds cards to both boards (dont know why 0_o)
             # add it to the players board
             row_cards = self.player_states[self._get_player_identifier(bottom_player)]["half_board"][row]
@@ -414,6 +437,10 @@ class Board:
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["passed"]
 
+    def remove_card_from_board(self, bottom_player: bool, card_row_index: int, row: Row):
+        # remove card from board
+        player_identifier = self._get_player_identifier(bottom_player)
+        self.player_states[player_identifier]["half_board"][row] = self.get_half_board(bottom_player)[row][: card_row_index] + self.get_half_board(bottom_player)[row][card_row_index+1:]
 
 # Example usage
 if __name__ == '__main__':
@@ -426,7 +453,7 @@ if __name__ == '__main__':
     board.clear_deck()
     board.clear_hands()
 
-    board.set_deck(bottom_player, Booster().open(20))
+    board.set_deck(bottom_player, Starter().open(20))
     x = len(board.get_deck(bottom_player))
     assert len(board.get_deck(bottom_player)) == 20
 

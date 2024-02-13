@@ -10,7 +10,7 @@ import time
 from src.player import Human,ArtificialRetardation
 from src.board import Board, Row
 from src.display import CardTable
-from src.cards import Booster
+from src.cards import Booster, Starter
 
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
@@ -73,9 +73,11 @@ class Game_Controller(Env):
         opponent.model = opponent_model
 
     def setup_hand_for_new_round(self) -> None:
-        self.board.set_deck(True, Booster().open(20))
+        #self.board.set_deck(True, Booster().open(20))
+        self.board.set_deck(True, Starter().open())
         self.board.draw_cards_to_hand(True, 10)
-        self.board.set_deck(False, Booster().open(20))
+        #self.board.set_deck(False, Booster().open(20))
+        self.board.set_deck(False, Starter().open())
         self.board.draw_cards_to_hand(False, 10)
 
     def step(self, action):

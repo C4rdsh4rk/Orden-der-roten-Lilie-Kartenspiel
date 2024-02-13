@@ -7,6 +7,8 @@ import numpy as np
 from sb3_contrib import QRDQN
 from typing import Dict, Callable
 from stable_baselines3 import PPO, DQN, A2C
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
@@ -38,7 +40,117 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
     return func
 
+def define_model(env, log_path):
+   choice = get_choice("Which RL Algorithm should be used?",["DQN","QRDQN","A2C"])
+   lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005, 0.0005, 0.0001, 0.00005])
+   lr_choice = float(lr_choice)
+   policy_kwargs = dict(n_quantiles=50)
 
+   if choice == "QRDQN":
+      train_index = get_index("In what interval should the networks weights be adjusted?",
+                                 ["1,episode","2,episode","3,episode","4,episode","1, step","2, step","3, step","4, step"])
+      frequencies = [(1,"episode"),(2,"episode"),(3,"episode"),(4,"episode"),(1, "step"),(2, "step"),(3, "step"),(4, "step")]
+      model = QRDQN("MlpPolicy",
+                  env,
+                  learning_rate=linear_schedule(lr_choice),
+                  buffer_size=1000000,
+                  learning_starts=100,
+                  batch_size=32,
+                  tau=1.0,
+                  gamma=0.99,
+                  train_freq=frequencies[train_index],
+                  gradient_steps=1,
+                  replay_buffer_class=None,
+                  replay_buffer_kwargs=None,
+                  optimize_memory_usage=False,
+                  target_update_interval=10000,
+                  exploration_fraction=0.005,
+                  exploration_initial_eps=1.0,
+                  exploration_final_eps=0.01,
+                  max_grad_norm=None,
+                  stats_window_size=100,
+                  tensorboard_log=log_path,
+                  policy_kwargs=policy_kwargs,
+                  verbose=1,
+                  seed=None,
+                  device='auto',
+                  _init_setup_model=True)
+
+   elif choice == "A2C":
+      model = A2C("MlpPolicy",
+                  env,
+                  learning_rate=0.0007,
+                  n_steps=5,
+                  gamma=0.99,
+                  gae_lambda=1.0,
+                  ent_coef=0.0,
+                  vf_coef=0.5,
+                  max_grad_norm=0.5,
+                  rms_prop_eps=1e-05,
+                  use_rms_prop=True,
+                  use_sde=False,
+                  sde_sample_freq=-1,
+                  rollout_buffer_class=None,
+                  rollout_buffer_kwargs=None,
+                  normalize_advantage=False,
+                  stats_window_size=100,
+                  #tensorboard_log=log_path,
+                  policy_kwargs=policy_kwargs,
+                  verbose=1,
+                  seed=None,
+                  device='cpu',
+                  _init_setup_model=True)
+      raise NotImplementedError
+   elif choice == "DQN":
+      model = DQN("MlpPolicy",
+                  env,
+                  learning_rate=linear_schedule(lr_choice),
+                  buffer_size=1000000,
+                  learning_starts=100,
+                  batch_size=32,
+                  tau=1.0,
+                  gamma=0.99,
+                  train_freq=frequencies[train_index],
+                  gradient_steps=1,
+                  replay_buffer_class=None,
+                  replay_buffer_kwargs=None,
+                  optimize_memory_usage=False,
+                  target_update_interval=10000,
+                  exploration_fraction=0.005,
+                  exploration_initial_eps=1.0,
+                  exploration_final_eps=0.01,
+                  max_grad_norm=None,
+                  stats_window_size=100,
+                  tensorboard_log=log_path,
+                  policy_kwargs=policy_kwargs,
+                  verbose=1,
+                  seed=None,
+                  device='auto',
+                  _init_setup_model=True)
+
+   else:
+      raise ValueError
+   return model
+
+def load_model(env, msg, continue_training=False):
+   ''' Load the trained agent
+    NOTE: if you have loading issue, you can pass `print_system_info=True`
+    to compare the system on which the model was trained vs the current one '''
+   choice = get_choice("Which RL Algorithm should be loaded?",["DQN","QRDQN","A2C"])
+   if choice == "QRDQN":
+      model = QRDQN.load(get_path(msg, "Choose a zip file",["*.zip"]),
+                        env=env, print_system_info=True)
+      if continue_training:
+         model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
+   elif choice == "DQN":
+      DQN.load(get_path(msg, "Choose a zip file",["*.zip"]),
+                        env=env, print_system_info=True)
+   elif choice == "A2C":
+      A2C.load(get_path(msg, "Choose a zip file",["*.zip"]),
+                        env=env, print_system_info=True)
+   else:
+      raise ValueError
+   return model
 
 def main():
    index = get_index("Do you want to play , simulate or train a network? ",
@@ -46,11 +158,7 @@ def main():
 
    if index == 0:
       env = Game_Controller()
-      # Load the trained agent
-      # NOTE: if you have loading issue, you can pass `print_system_info=True`
-      # to compare the system on which the model was trained vs the current one
-      model = QRDQN.load(get_path("Which network should be loaded?", "Choose a zip file",["*.zip"]),
-                           env=env, print_system_info=True)
+      model = load_model(env,"Which network should be loaded?")
       observation, _ = env.reset()
       env.render()
       while not env.done:
@@ -63,10 +171,10 @@ def main():
       raise NotImplementedError
    else:
       env = Game_Controller(True)
-
+      #num_envs = get_int("How many envs should be running in parallel?", 0, 10000)
+      #env = make_vec_env(Game_Controller(True), num_envs, vec_env_cls=SubprocVecEnv)
       if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
-         enemy_model = QRDQN.load(get_path("Which network should be loaded as an opponent?", "Choose a zip file",["*.zip"]),
-                        env=env, print_system_info=True)
+         enemy_model = load_model(env, "Which network should be loaded as an opponent?")
          env.load_opponent_model(enemy_model)
       else:
          enemy_model = None
@@ -81,39 +189,9 @@ def main():
       new_logger = configure(log_path, ["stdout", "tensorboard"])
 
       if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
-         timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
-         lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005, 0.0005, 0.0001, 0.00005])
-         lr_choice = float(lr_choice)
-         train_index = get_index("In what interval should the networks weights be adjusted?",
-                                      ["1,episode","2,episode","3,episode","4,episode","1, step","2, step","3, step","4, step"])
-         frequencies = [(1,"episode"),(2,"episode"),(3,"episode"),(4,"episode"),(1, "step"),(2, "step"),(3, "step"),(4, "step")]
-         policy_kwargs = dict(n_quantiles=50)
          log_path += timestamp
-         model = QRDQN("MlpPolicy",
-                        env,
-                        learning_rate=linear_schedule(lr_choice),
-                        buffer_size=1000000,
-                        learning_starts=100,
-                        batch_size=32,
-                        tau=1.0,
-                        gamma=0.99,
-                        train_freq=frequencies[train_index],
-                        gradient_steps=1,
-                        replay_buffer_class=None,
-                        replay_buffer_kwargs=None,
-                        optimize_memory_usage=False,
-                        target_update_interval=10000,
-                        exploration_fraction=0.005,
-                        exploration_initial_eps=1.0,
-                        exploration_final_eps=0.01,
-                        max_grad_norm=None,
-                        stats_window_size=100,
-                        tensorboard_log=log_path,
-                        policy_kwargs=policy_kwargs,
-                        verbose=1,
-                        seed=None,
-                        device='auto',
-                        _init_setup_model=True)
+         model = define_model(env, log_path)
+         timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
          # Set new logger
          model.set_logger(new_logger)
          # Use traditional actor-critic policy gradient updates to
@@ -124,8 +202,7 @@ def main():
          model.save_replay_buffer(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
 
       else:
-         model = QRDQN.load(get_path("Which network should be loaded?", "Choose a zip file",["*.zip"]), env=env, print_system_info=True)
-         model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
+         model = load_model(env,"Which network should be loaded?", continue_training=True)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
 
          if get_bool("Continue training a single network?",["Yes","No"]):
@@ -179,9 +256,6 @@ def main():
             print(f"Iteration {iteration + 1:<3} Mean top fitness: {mean_fitness:.2f}")
             print(f"Best fitness this iteration: {top_candidates[0][1]:.2f} vs Champion: {prior_mean_champion_fitness:.2f}")
             if top_candidates[0][1] > prior_mean_champion_fitness:
-               #model.policy.load_state_dict(top_candidates[0][0], strict=False)
-               #mean_reward, std_reward = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
-               #if mean_reward > prior_mean_champion_fitness: #and std_reward > prior_std_champion_fitness:
                print("Saving new Champion",end="")
                prior_mean_champion_fitness = top_candidates[0][1]
                name = "QRDQN_Agent_" + str(round(prior_mean_champion_fitness))
