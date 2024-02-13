@@ -150,7 +150,7 @@ class Board:
         player_identifier = self._get_player_identifier(bottom_player)
         return self.player_states[player_identifier]["graveyard"]
 
-    def set_graveyard(self, bottom_player: bool, hand: list[Card]) -> None:
+    def set_graveyard(self, bottom_player: bool, graveyard: list[Card]) -> None:
         """
         Method to set the graveyard of a player. If bottom player the graveyard of
         the bottom player will be returned, otherwise the graveyard of the
