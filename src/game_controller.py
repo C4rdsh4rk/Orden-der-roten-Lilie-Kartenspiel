@@ -285,33 +285,38 @@ class Game_Controller(Env):
     #####################################################################################################
     def get_reward(self, is_bottom_player=True):
         """
-        Simplified and more generous reward calculation to encourage learning and strategic gameplay.
-        Provides more frequent and significant rewards for actions, with reduced penalties.
+        Enhanced reward function for a DQN agent, incorporating strategic depth and dynamic rewarding.
         """
+
         reward = 0.0
-        
+
         game_ended = self.board.game_ended()
         winners = self.board.get_winner()
         round_winner = self.board.get_round_winner()
         player_won_rows, opponent_won_rows = self.board.get_won_rows() if is_bottom_player else reversed(self.board.get_won_rows())
 
-        # Simplify game outcome rewards to be more generous
+        # Adjust reward/penalty for game outcome
         if game_ended:
-            reward += 100.0 if winners[int(is_bottom_player)] else 0  # Reward for game end, no penalty for losing
+            reward += 100.0 if winners[int(is_bottom_player)] else -50.0
 
-        # Provide rewards for each won row, reducing complexity in calculation
-        reward += player_won_rows * 20  # Reward for each won row, making it simpler
+        # Adjust rewards for row victories, incorporating strategic depth
+        reward += player_won_rows * 20 - opponent_won_rows * 10
 
-        # Round victory considerations: more straightforward reward
+        # Reward for round victory, with adjusted penalty for loss
         if self.board.get_player_name(is_bottom_player) in round_winner:
-            reward += 20.0  # Simplified reward for winning a round
+            reward += 50.0
+        else:
+            reward -= 25.0
 
-        # Encourage card playing: provide a flat reward for playing cards, without penalizing holding cards
-        cards_played = 10 - len(self.board.get_hand(is_bottom_player))  # Assuming 10 is the starting hand count
-        reward += cards_played * 2  # Reward for each card played
+        # Encourage card playing with a nuanced approach
+        cards_played = 10 - len(self.board.get_hand(is_bottom_player))
+        reward += cards_played * 5
 
-        # Strategic passing: provide a reward for passing, encouraging strategic timing without penalties
+        # Strategic passing: Simplify reward for passing to ensure it's directly related to game state
         if self.board.has_passed(is_bottom_player):
-            reward += 10  # Flat reward for passing, encouraging strategic play
-        reward = reward/10
+            reward += 15 if player_won_rows > opponent_won_rows else -15
+
+        # Normalize the reward to maintain a consistent scale
+        reward /= 10.0
+
         return reward
