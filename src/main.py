@@ -66,9 +66,11 @@ def define_model(env, log_path, callback):
                   seed=None,
                   device=device,
                   _init_setup_model=True)
+      observation = env.reset() # observation, _
+      check_env(env, warn=True)
 
    elif choice == "A2C":
-      num_envs = get_int("How many vec_envs should be running in parallel?", 0, 12)
+      num_envs = get_int("How many vec_envs should be running in parallel? [!MAXIMUM: LOGICAL CORES!]", 0, 12)
       env = make_vec_env(env, num_envs, vec_env_cls=SubprocVecEnv)
       model = A2C("MlpPolicy",
                   env,
@@ -95,6 +97,9 @@ def define_model(env, log_path, callback):
                   _init_setup_model=True)
       raise NotImplementedError
    elif choice == "DQN":
+      train_index = get_index("In what interval should the networks weights be adjusted?",
+                  ["1,episode","2,episode","3,episode","4,episode","1, step","2, step","3, step","4, step"])
+      frequencies = [(1,"episode"),(2,"episode"),(3,"episode"),(4,"episode"),(1, "step"),(2, "step"),(3, "step"),(4, "step")]
       model = DQN("MlpPolicy",
                   env,
                   learning_rate=linear_schedule(lr_choice),
@@ -112,14 +117,16 @@ def define_model(env, log_path, callback):
                   exploration_fraction=0.005,
                   exploration_initial_eps=1.0,
                   exploration_final_eps=0.01,
-                  max_grad_norm=None,
+                  max_grad_norm=10,
                   stats_window_size=100,
                   tensorboard_log=log_path,
-                  policy_kwargs=policy_kwargs,
+                  policy_kwargs=None,
                   verbose=1,
                   seed=None,
                   device=device,
                   _init_setup_model=True)
+      observation = env.reset() # observation, _
+      check_env(env, warn=True)
 
    else:
       raise ValueError
@@ -176,8 +183,6 @@ def main():
          enemy_model = None
       
       observation = env.reset() # observation, _
-      check_env(env, warn=True)
-      observation = env.reset() # observation, _
       timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
       save_path = os.path.join('models',timestamp)
       # set up logger
@@ -198,7 +203,7 @@ def main():
          # Set new logger
          model.set_logger(new_logger)
 
-         model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
+         model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
          model.save(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
          model.save_replay_buffer(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
@@ -208,7 +213,7 @@ def main():
 
          if get_bool("Continue training a single network?",["Yes","No"]):
             timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
-            model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
+            model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
             mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
             mean_reward = round(mean_reward)
             model.save(f"{save_path}\QRDQNAgent_{mean_reward}_{timestamp}")
