@@ -121,7 +121,7 @@ class Booster:
 class Starter:
     def __init__(self):
         self.available_effects = [
-            Burn("BURN"),
+            #Burn("BURN"),
             Revive("REVIVE"),
             Summon("SUMMON")
         ]

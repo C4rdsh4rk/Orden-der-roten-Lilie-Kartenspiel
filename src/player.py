@@ -66,49 +66,6 @@ class Human(Player):
         )
         return row_choices[int(monkey_input) - 1]
 
-'''    def build_deck(self, booster):
-        deck = []
-        loop_flag = True
-        auto_build_deck=get_user_input(
-            f"Do you want a random deck? 0 - No, 1 - Yes",
-            ["0", "1"]
-            )
-        while loop_flag:
-            #clear_screen()
-            print(f"{self.name} is building his deck")
-            booster_pack = booster.open(5) # Create a Boosterpack with 5 random cards
-            if not bool(int(auto_build_deck)):
-                print("Choose cards for your deck")
-                print("Available Cards:\n" + Fore.WHITE)
-                print(f"{'+----------+ '*len(booster_pack)}")
-                print(f"{'|          | '*len(booster_pack)}")
-                print(" ".join([f"| {card.name}" + " "*(19-len(card.name))+"|" for card in booster_pack]))
-                print(" ".join([f"| Str: {card.strength}   |" for card in booster_pack]))
-                print(f"{'|          | '*len(booster_pack)}")
-                print(f"{'+----------+ '*len(booster_pack)}")
-
-                self.display_deck()
-
-                choice = get_user_input(
-                    f"Enter a number 1-{len(booster_pack)} to choose a card\n",
-                    [str(number) for number in range(1, len(booster_pack)+1)]
-                )
-                choice = int(choice)
-                chosen_card = booster_pack[choice - 1]
-            else:  # cpu chooses a random card
-                chosen_card = random.choice(booster_pack)
-            # deck building checks
-            if sum(card.strength for card in deck) + chosen_card.strength <= 38:
-                deck.append(chosen_card)
-            elif sum(card.strength for card in deck) == 38:
-                break
-            else:
-                print("Value exceeds maximum deck strength, try again. (not your fault)")
-                # If adding the card exceeds the total strength constraint, try another card
-                continue
-        return deck'''
-
-
 class ArtificialRetardation(Player):
     def __init__(self, name, model=None):
         super().__init__(name)
@@ -134,20 +91,3 @@ class ArtificialRetardation(Player):
         else:
             self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]
         return self.passed
-'''
-    def build_deck(self, booster):
-        deck = []
-        while True:
-            #clear_screen()
-            booster_pack = booster.open(5)
-            chosen_card = random.choice(booster_pack)
-            # deck building checks
-            if sum(card.strength for card in deck) + chosen_card.strength <= 38:
-                deck.append(chosen_card)
-            elif sum(card.strength for card in deck) == 38:
-                break
-            else:
-                #print("Value exceeds maximum deck strength, try again. (not your fault)")
-                # If adding the card exceeds the total strength constraint, try another card
-                continue
-        return deck'''
