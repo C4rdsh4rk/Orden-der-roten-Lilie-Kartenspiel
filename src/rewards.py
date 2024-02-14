@@ -146,3 +146,58 @@ def is_early_pass(self, player):
     # This should be adjusted based on the specific game mechanics and strategy
     beneficial_moves_left = self.check_for_beneficial_moves(player)
     return not beneficial_moves_left
+###########################################################################################################
+    def get_reward(self, is_bottom_player=True):
+        """
+        Enhanced reward function for a DQN agent, incorporating strategic depth and dynamic rewarding.
+        """
+
+        reward = 0.0
+
+        game_ended = self.board.game_ended()
+        winners = self.board.get_winner()
+        round_winner = self.board.get_round_winner()
+        player_won_rows, opponent_won_rows = self.board.get_won_rows() if is_bottom_player else reversed(self.board.get_won_rows())
+
+        # Adjust reward/penalty for game outcome
+        if game_ended:
+            reward += 100.0 if winners[int(is_bottom_player)] else -50.0
+
+        # Adjust rewards for row victories, incorporating strategic depth
+        reward += player_won_rows * 20 - opponent_won_rows * 10
+
+        # Reward for round victory, with adjusted penalty for loss
+        if self.board.get_player_name(is_bottom_player) in round_winner:
+            reward += 50.0
+        else:
+            reward -= 25.0
+
+        # Encourage card playing with a nuanced approach
+        cards_played = 10 - len(self.board.get_hand(is_bottom_player))
+        reward += cards_played * 5
+
+        # Strategic passing: Simplify reward for passing to ensure it's directly related to game state
+        if self.board.has_passed(is_bottom_player):
+            reward += 15 if player_won_rows > opponent_won_rows else -15
+
+        # Normalize the reward to maintain a consistent scale
+        reward /= 10.0
+
+        return reward 
+###################################################################################################################
+    
+def calculate_reward(old_state, new_state, goal_position):
+    old_distance = np.linalg.norm(old_state - goal_position)
+    new_distance = np.linalg.norm(new_state - goal_position)
+
+    # Reward for moving closer, penalty for moving away
+    if new_distance < old_distance:
+        return 1.0  # Reward for moving closer
+    elif new_distance > old_distance:
+        return -1.0  # Penalty for moving away
+    else:
+        return -0.1  # Small penalty for staying in place to encourage exploration
+
+    # Bonus for reaching the goal
+    if np.array_equal(new_state, goal_position):
+        return 100.0  # Large reward for reaching the goal

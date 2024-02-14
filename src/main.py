@@ -3,8 +3,9 @@ import os
 import time
 import torch as th
 import gymnasium as gym
+import optuna
 import numpy as np
-from sb3_contrib import QRDQN
+from sb3_contrib import QRDQN, ARS
 from typing import Dict, Callable
 from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.env_util import make_vec_env
@@ -16,35 +17,25 @@ from stable_baselines3.common.logger import configure
 # local imports
 from src.game_controller import Game_Controller
 from src.utils import get_path, get_int, get_index, get_bool, get_choice, get_user_input
+from src.better_learning import mutate, linear_schedule, SaveOnBestTrainingRewardCallback
+#from src.custom_nn import CustomCNN
+#from src.better_learning import CustomRewardShaping
 
-def mutate(params: dict[str, th.Tensor]) -> dict[str, th.Tensor]:
-    """Mutate parameters by adding normal noise to them"""
-    return dict((name, param + th.randn_like(param)) for name, param in params.items())
 
-def linear_schedule(initial_value: float) -> Callable[[float], float]:
-    """
-    Linear learning rate schedule.
-
-    :param initial_value: Initial learning rate.
-    :return: schedule that computes
-      current learning rate depending on remaining progress
-    """
-    def func(progress_remaining: float) -> float:
-        """
-        Progress will decrease from 1 (beginning) to 0.
-
-        :param progress_remaining:
-        :return: current learning rate
-        """
-        return progress_remaining * initial_value
-
-    return func
-
-def define_model(env, log_path):
+def define_model(env, log_path, callback):
+   device = get_choice("Which device should be used?",["cpu","cuda","auto"])
    choice = get_choice("Which RL Algorithm should be used?",["DQN","QRDQN","A2C"])
-   lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005, 0.0005, 0.0001, 0.00005])
+   lr_choice = get_choice("Which learnrate should be used?",[0.1, 0.05, 0.005,0.001, 0.0005, 0.0001, 0.00005])
    lr_choice = float(lr_choice)
    policy_kwargs = dict(n_quantiles=50)
+
+   # Define hyperparameters to tune OPTUNA
+   #learning_rate = optuna.trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
+   #quantiles = optuna.trial.suggest_int("quantiles", 5, 20)
+   '''policy_kwargs = dict( # load custom NN
+    features_extractor_class=CustomCNN,
+    features_extractor_kwargs=dict(features_dim=128),
+   )'''
 
    if choice == "QRDQN":
       train_index = get_index("In what interval should the networks weights be adjusted?",
@@ -73,13 +64,15 @@ def define_model(env, log_path):
                   policy_kwargs=policy_kwargs,
                   verbose=1,
                   seed=None,
-                  device='auto',
+                  device=device,
                   _init_setup_model=True)
 
    elif choice == "A2C":
+      num_envs = get_int("How many vec_envs should be running in parallel?", 0, 12)
+      env = make_vec_env(env, num_envs, vec_env_cls=SubprocVecEnv)
       model = A2C("MlpPolicy",
                   env,
-                  learning_rate=0.0007,
+                  learning_rate=lr_choice,
                   n_steps=5,
                   gamma=0.99,
                   gae_lambda=1.0,
@@ -94,11 +87,11 @@ def define_model(env, log_path):
                   rollout_buffer_kwargs=None,
                   normalize_advantage=False,
                   stats_window_size=100,
-                  #tensorboard_log=log_path,
-                  policy_kwargs=policy_kwargs,
+                  tensorboard_log=log_path,
+                  #policy_kwargs=None,
                   verbose=1,
                   seed=None,
-                  device='cpu',
+                  device=device,
                   _init_setup_model=True)
       raise NotImplementedError
    elif choice == "DQN":
@@ -125,7 +118,7 @@ def define_model(env, log_path):
                   policy_kwargs=policy_kwargs,
                   verbose=1,
                   seed=None,
-                  device='auto',
+                  device=device,
                   _init_setup_model=True)
 
    else:
@@ -170,37 +163,45 @@ def main():
    elif index == 1:
       raise NotImplementedError
    else:
+      '''if get_bool("Use reward shaping wrapper?",["Yes","No"]):
+         # Wrap environment
+         env = CustomRewardShaping(Game_Controller(True)) # NOTE: Reward shaping not adjustet or tuned
+      else:
+         env = Game_Controller(True)'''
       env = Game_Controller(True)
-      #num_envs = get_int("How many envs should be running in parallel?", 0, 10000)
-      #env = make_vec_env(Game_Controller(True), num_envs, vec_env_cls=SubprocVecEnv)
       if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
          enemy_model = load_model(env, "Which network should be loaded as an opponent?")
          env.load_opponent_model(enemy_model)
       else:
          enemy_model = None
       
-      observation, _ = env.reset()
+      observation = env.reset() # observation, _
       check_env(env, warn=True)
-      observation, _ = env.reset()
+      observation = env.reset() # observation, _
       timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
       save_path = os.path.join('models',timestamp)
       # set up logger
       log_path = os.path.join('logs', 'training',timestamp)
       new_logger = configure(log_path, ["stdout", "tensorboard"])
-
+      if get_bool("Add callback to training?",["yes","no"]):
+         call_index = get_index("What callback? ",
+                  ['SaveOnBestTrainingRewardCallback'])
+         if call_index == 0:
+            # Create the callback: check every x steps
+            callback = SaveOnBestTrainingRewardCallback(check_freq=get_int("How often should callback be triggered?", 0, 10000), log_dir=log_path, save_dir=save_path)
+      else:
+         callback = None
       if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
          log_path += timestamp
-         model = define_model(env, log_path)
+         model = define_model(env, log_path, callback)
          timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
          # Set new logger
          model.set_logger(new_logger)
-         # Use traditional actor-critic policy gradient updates to
-         # find good initial parameters
+
          model.learn(total_timesteps=timesteps,tb_log_name=timestamp)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
          model.save(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
          model.save_replay_buffer(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
-
       else:
          model = load_model(env,"Which network should be loaded?", continue_training=True)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)

@@ -12,6 +12,7 @@ from src.board import Board, Row
 from src.display import CardTable
 from src.cards import Booster, Starter
 
+
 class Game_Controller(Env):
     """A gym-like environment that simulates a card game between two players.
     
@@ -20,6 +21,7 @@ class Game_Controller(Env):
     Attributes:
         action_space (gym.spaces.Discrete): The space of possible actions, represented as an integer index corresponding to a card in the player's hand.
         observation_space (gym.spaces.Box): The space of possible observations, representing the state of the game board and players' hands."""
+    metadata = {'render.modes': ['human']}
 
     def __init__(self, training = False):
         """Initialize the environment with a random seed and initial state."""
@@ -302,7 +304,7 @@ class Game_Controller(Env):
             reward += 100.0 if winners[int(is_bottom_player)] else -50.0
 
         # Adjust rewards for row victories, incorporating strategic depth
-        reward += player_won_rows * 20 - opponent_won_rows * 10
+        #reward += player_won_rows * 20 - opponent_won_rows * 10
 
         # Reward for round victory, with adjusted penalty for loss
         if self.board.get_player_name(is_bottom_player) in round_winner:
@@ -311,12 +313,12 @@ class Game_Controller(Env):
             reward -= 25.0
 
         # Encourage card playing with a nuanced approach
-        cards_played = 10 - len(self.board.get_hand(is_bottom_player))
-        reward += cards_played * 5
+        #cards_played = 10 - len(self.board.get_hand(is_bottom_player))
+        #reward += cards_played * 5
 
         # Strategic passing: Simplify reward for passing to ensure it's directly related to game state
-        if self.board.has_passed(is_bottom_player):
-            reward += 15 if player_won_rows > opponent_won_rows else -15
+        #if self.board.has_passed(is_bottom_player):
+        #    reward += 15 if player_won_rows > opponent_won_rows else -15
 
         # Normalize the reward to maintain a consistent scale
         reward /= 10.0
