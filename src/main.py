@@ -143,12 +143,12 @@ def load_model(env, msg, continue_training=False):
       if continue_training:
          model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
    elif choice == "DQN":
-      DQN.load(get_path(msg, "Choose a zip file",["*.zip"]),
+      model = DQN.load(get_path(msg, "Choose a zip file",["*.zip"]),
                         env=env, print_system_info=True)
       if continue_training:
          model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
    elif choice == "A2C":
-      A2C.load(get_path(msg, "Choose a zip file",["*.zip"]),
+      model = A2C.load(get_path(msg, "Choose a zip file",["*.zip"]),
                         env=env, print_system_info=True)
    else:
       raise ValueError
