@@ -130,7 +130,7 @@ def define_model(env, log_path, callback):
 
    else:
       raise ValueError
-   return model
+   return model, choice 
 
 def load_model(env, msg, continue_training=False):
    ''' Load the trained agent
@@ -145,12 +145,14 @@ def load_model(env, msg, continue_training=False):
    elif choice == "DQN":
       DQN.load(get_path(msg, "Choose a zip file",["*.zip"]),
                         env=env, print_system_info=True)
+      if continue_training:
+         model.load_replay_buffer(get_path("Which replay buffer should be loaded?", "Choose a pkl file",["*.pkl"]))
    elif choice == "A2C":
       A2C.load(get_path(msg, "Choose a zip file",["*.zip"]),
                         env=env, print_system_info=True)
    else:
       raise ValueError
-   return model
+   return model, choice 
 
 def main():
    index = get_index("Do you want to play , simulate or train a network? ",
@@ -158,7 +160,7 @@ def main():
 
    if index == 0:
       env = Game_Controller()
-      model = load_model(env,"Which network should be loaded?")
+      model, RL_type = load_model(env,"Which network should be loaded?")
       observation, _ = env.reset()
       env.render()
       while not env.done:
@@ -177,7 +179,7 @@ def main():
          env = Game_Controller(True)'''
       env = Game_Controller(True)
       if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
-         enemy_model = load_model(env, "Which network should be loaded as an opponent?")
+         enemy_model, _ = load_model(env, "Which network should be loaded as an opponent?")
          env.load_opponent_model(enemy_model)
       else:
          enemy_model = None
@@ -198,17 +200,20 @@ def main():
          callback = None
       if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
          log_path += timestamp
-         model = define_model(env, log_path, callback)
+         model, RL_type = define_model(env, log_path, callback)
          timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
          # Set new logger
          model.set_logger(new_logger)
-
-         model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
-         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
-         model.save(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
-         model.save_replay_buffer(f"{save_path}\QRDQNAgent_{round(mean_reward)}")
+         single = True
+         while(single):
+            timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
+            model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True,reset_num_timesteps= not single)
+            mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
+            model.save(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
+            model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
+            single = get_bool("Continue training a single network?",["Yes","No"])
       else:
-         model = load_model(env,"Which network should be loaded?", continue_training=True)
+         model, RL_type = load_model(env,"Which network should be loaded?", continue_training=True)
          mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
 
          if get_bool("Continue training a single network?",["Yes","No"]):
@@ -216,8 +221,8 @@ def main():
             model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
             mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
             mean_reward = round(mean_reward)
-            model.save(f"{save_path}\QRDQNAgent_{mean_reward}_{timestamp}")
-            model.save_replay_buffer(f"{save_path}\QRDQNAgent_{mean_reward}_{timestamp}")
+            model.save(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
+            model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
 
       if get_bool("Continue with evolutionary training?",["Yes","No"]):
          # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
@@ -264,7 +269,7 @@ def main():
             if top_candidates[0][1] > prior_mean_champion_fitness:
                print("Saving new Champion",end="")
                prior_mean_champion_fitness = top_candidates[0][1]
-               name = "QRDQN_Agent_" + str(round(prior_mean_champion_fitness))
+               name = RL_type+"_Agent_" + str(round(prior_mean_champion_fitness))
                champion = top_candidates[0][0]
                model.policy.load_state_dict(champion, strict=False)
                model.save_replay_buffer(f"{save_path}\{name}")

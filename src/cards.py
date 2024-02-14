@@ -121,7 +121,7 @@ class Booster:
 class Starter:
     def __init__(self):
         self.available_effects = [
-            #Burn("BURN"),
+            Burn("BURN"),
             Revive("REVIVE"),
             Summon("SUMMON")
         ]
@@ -135,7 +135,8 @@ class Starter:
             self.defined_deck.append(Card("KNIGHT", strength, Row.FRONT))
             self.defined_deck.append(Card("CLERIC", strength, Row.WISE))
             self.defined_deck.append(Card("HEALER", strength, Row.SUPPORT))
-        #self.defined_deck.append()
+        self.defined_deck.append(random.choice(self.available_effects))
+        self.defined_deck.append(random.choice(self.available_effects))
         self.defined_deck.append(Card("HERO", 5, Row.ANY))
 
 
