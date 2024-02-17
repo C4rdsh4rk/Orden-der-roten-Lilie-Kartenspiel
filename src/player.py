@@ -1,9 +1,12 @@
 from abc import ABC
 import random
+from typing import Callable
+import numpy as np
+import torch
 from src.row import Row
 from src.utils import get_name
 from src.cards import Card
-from typing import Callable
+from src.MCTS import PolicyNetwork
 
 any_row_choice = {
     1: Row.FRONT,
@@ -14,7 +17,7 @@ class Player(ABC):
     def __init__(self, name):
         self.name = name
 
-    def make_pass_choice(self) -> bool:
+    def make_pass_choice(self, hand) -> bool:
         """
         Function that determines if the player passes
         """
@@ -91,3 +94,22 @@ class ArtificialRetardation(Player):
         else:
             self.passed = random.choices([False, True],[0.97,0.03],k=1)[0]
         return self.passed
+
+class MCTS_Idiot(Player):
+    def __init__(self, name, policy_net: PolicyNetwork):
+        super().__init__(name)
+        self.policy_net = policy_net
+        self.search_depth = 5
+        
+    def make_choice(self, valid_actions, env, action=None):
+        is_bottom_player = [player for player in env.players if player[2]==self][0][1]
+        state = env.get_state(is_bottom_player)
+        mcts = MCTS(state, self.policy_net)
+        # Run simulations and update the tree until search depth is reached or game ends
+        for _ in range(self.search_depth):
+            mcts.simulate()
+        action_probs = mcts.get_action_probabilities()
+        choice = 41
+        while choice not in valid_actions:
+            choice = np.random.choice(env.action_space, p=action_probs)
+        return choice

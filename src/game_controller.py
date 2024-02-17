@@ -10,7 +10,7 @@ import time
 from src.player import Human,ArtificialRetardation
 from src.board import Board, Row
 from src.display import CardTable
-from src.cards import Booster, Starter
+from src.cards import Starter
 
 
 class Game_Controller(Env):
@@ -23,7 +23,7 @@ class Game_Controller(Env):
         observation_space (gym.spaces.Box): The space of possible observations, representing the state of the game board and players' hands."""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, training = False):
+    def __init__(self, training = False, players = None):
         """Initialize the environment with a random seed and initial state."""
 
         super().__init__()
@@ -41,10 +41,14 @@ class Game_Controller(Env):
         is_bottom_player = True
         
         if training:
-            self.players = [
-                (uses_action, is_bottom_player, ArtificialRetardation("Trained Monkey")),                   # Trainee
-                (not uses_action, not is_bottom_player, ArtificialRetardation("Clueless Robot"))     # Opponent
-            ]
+            if players:
+                self.players = players
+            else:
+                self.players = [
+                    (uses_action, is_bottom_player, ArtificialRetardation("Trained Monkey")),          # Trainee
+                    #(uses_action, is_bottom_player, MCTS_Idiot("Trained Monkey", self.action_space)),           # Trainee
+                    (not uses_action, not is_bottom_player, ArtificialRetardation("Clueless Robot"))    # Opponent
+                ]
         else:
             self.display.start_render()
             self.players =  [
@@ -66,7 +70,7 @@ class Game_Controller(Env):
             }
         
         self.steps=0
-
+        self.rounds_in_advantage = 0
         time_stamp = time.strftime("%d%m%Y_%H%M%S", time.localtime())
         logging.basicConfig(level=logging.DEBUG, filename='logs/'+str(time_stamp)+'.log', filemode='w', format='%(message)s')
 
@@ -192,6 +196,8 @@ class Game_Controller(Env):
         """
         # Reset the environment to its initial state
         super().reset(seed=seed)
+        self.steps=0
+        self.rounds_in_advantage = 0
         info = {}
         self.rewards = {
             True : 0,
@@ -238,7 +244,6 @@ class Game_Controller(Env):
         # current round 1
         # action feedback
         # = 466
-
 
         state = np.zeros((466,), dtype=np.uint8)
         
@@ -291,36 +296,74 @@ class Game_Controller(Env):
         """
         Enhanced reward function for a DQN agent, incorporating strategic depth and dynamic rewarding.
         """
-
         reward = 0.0
 
         game_ended = self.board.game_ended()
         winners = self.board.get_winner()
         round_winner = self.board.get_round_winner()
         player_won_rows, opponent_won_rows = self.board.get_won_rows() if is_bottom_player else reversed(self.board.get_won_rows())
+        row_difference = player_won_rows - opponent_won_rows
+        # Standardize rewards to encourage both immediate and strategic play
+        base_win_reward = 1.0
+        base_loss_penalty = -1.0
 
-        # Adjust reward/penalty for game outcome
-        if game_ended:
-            reward += 100.0 if winners[int(is_bottom_player)] else -50.0
+        # Calculate the difference in rounds won between the player and the opponent
+        rounds_won_difference = self.board.get_rounds_won(is_bottom_player) - self.board.get_rounds_won(not is_bottom_player)
 
-        # Adjust rewards for row victories, incorporating strategic depth
-        #reward += player_won_rows * 20 - opponent_won_rows * 10
+        # Reward/Penalty for round outcomes
+        if rounds_won_difference > 0:
+            reward += base_win_reward * rounds_won_difference
+        elif rounds_won_difference < 0:
+            reward += base_loss_penalty * rounds_won_difference
 
-        # Reward for round victory, with adjusted penalty for loss
-        if self.board.get_player_name(is_bottom_player) in round_winner:
-            reward += 50.0
-        else:
-            reward -= 25.0
+        # Major reward for winning the game, encouraging the agent to aim for a win
+        if self.board.get_rounds_won(is_bottom_player) >= 2:
+            reward += 5.0  # Substantial reward for winning the game
 
-        # Encourage card playing with a nuanced approach
-        #cards_played = 10 - len(self.board.get_hand(is_bottom_player))
-        #reward += cards_played * 5
+        # Adjust rewards based on strategic passing
+        if self.board.has_passed(is_bottom_player):
+            passed_penalty = -0.5  # Penalize less for strategic passing
+            reward += passed_penalty
 
-        # Strategic passing: Simplify reward for passing to ensure it's directly related to game state
-        #if self.board.has_passed(is_bottom_player):
-        #    reward += 15 if player_won_rows > opponent_won_rows else -15
+        # Incorporate a decay factor for future rewards to promote strategic thinking
+        gamma = 0.9  # Decay factor for future rewards
+        future_rewards_estimate = self.estimate_future_rewards(is_bottom_player) * gamma
+        reward += future_rewards_estimate
 
-        # Normalize the reward to maintain a consistent scale
-        reward /= 10.0
+        # Normalize reward to be within a specific range to maintain consistency
+        #max_possible_reward = 10.0
+        #reward = max(min(reward, max_possible_reward), -max_possible_reward)
 
+        # Update the player's accumulated rewards
+        self.rewards[is_bottom_player] += reward
         return reward
+
+    def estimate_future_rewards(self, player):
+        # Heuristic-based future reward estimation
+        
+        # Example heuristic: Balance between aggression and defense based on the current state
+        aggression_factor = 3  # Reward more aggressive play slightly
+        defense_factor = 5 # Reward defensive play to a lesser extent
+
+        # Calculate the current advantage or disadvantage in terms of rounds won
+        rounds_advantage = self.board.get_rounds_won(player) - self.board.get_rounds_won(not player)
+
+        # Adjust the future reward estimation based on the player's current position
+        if rounds_advantage > 0:
+            # Player is leading: encourage maintaining or extending the lead (defensive strategy)
+            future_reward_estimation = rounds_advantage * self.rounds_in_advantage
+            self.rounds_in_advantage += 1
+        elif rounds_advantage < 0:
+            # Player is trailing: encourage catching up or overtaking (aggressive strategy)
+            future_reward_estimation = rounds_advantage * 2
+            self.rounds_in_advantage = 0
+        else:
+            # No clear advantage: neutral encouragement for both aggression and defense
+            future_reward_estimation = 0.0
+
+        # Example adjustment based on additional game state considerations
+        # If the opponent has passed and the player has a winning hand, increase the future reward estimation
+        #if self.board.has_passed(not player) and not self.board.has_passed(player):
+        #    future_reward_estimation += rounds_advantage*self.rounds_in_advantage
+
+        return future_reward_estimation

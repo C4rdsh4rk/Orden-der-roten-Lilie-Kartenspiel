@@ -1,9 +1,9 @@
 # third party imports
 import os
 import time
-import torch as th
+import torch
 import gymnasium as gym
-import optuna
+#import optuna
 import numpy as np
 from sb3_contrib import QRDQN, ARS
 from typing import Dict, Callable
@@ -16,11 +16,10 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.logger import configure
 # local imports
 from src.game_controller import Game_Controller
-from src.utils import get_path, get_int, get_index, get_bool, get_choice, get_user_input
+from src.utils import get_path, get_int, get_index, get_bool, get_choice
 from src.better_learning import mutate, linear_schedule, SaveOnBestTrainingRewardCallback
-#from src.custom_nn import CustomCNN
-#from src.better_learning import CustomRewardShaping
-
+from src.MCTS import Memory, PolicyNetwork, MCTS
+from src.player import Human, ArtificialRetardation, MCTS_Idiot
 
 def define_model(env, log_path, callback):
    device = get_choice("Which device should be used?",["cpu","cuda","auto"])
@@ -172,117 +171,136 @@ def main():
    elif index == 1:
       raise NotImplementedError
    else:
-      '''if get_bool("Use reward shaping wrapper?",["Yes","No"]):
-         # Wrap environment
-         env = CustomRewardShaping(Game_Controller(True)) # NOTE: Reward shaping not adjustet or tuned
-      else:
-         env = Game_Controller(True)'''
-      env = Game_Controller(True)
-      if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
-         enemy_model, _ = load_model(env, "Which network should be loaded as an opponent?")
-         env.load_opponent_model(enemy_model)
-      else:
-         enemy_model = None
-      
-      observation = env.reset() # observation, _
-      timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
-      save_path = os.path.join('models',timestamp)
-      # set up logger
-      log_path = os.path.join('logs', 'training',timestamp)
-      new_logger = configure(log_path, ["stdout", "tensorboard"])
-      if get_bool("Add callback to training?",["yes","no"]):
-         call_index = get_index("What callback? ",
-                  ['SaveOnBestTrainingRewardCallback'])
-         if call_index == 0:
-            # Create the callback: check every x steps
-            callback = SaveOnBestTrainingRewardCallback(check_freq=get_int("How often should callback be triggered?", 0, 10000), log_dir=log_path, save_dir=save_path)
-      else:
-         callback = None
-      if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
-         log_path += timestamp
-         model, RL_type = define_model(env, log_path, callback)
-         timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
-         # Set new logger
-         model.set_logger(new_logger)
-         single = True
-         while(single):
-            timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
-            model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True,reset_num_timesteps= not single)
-            mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
-            model.save(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
-            model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
-            single = get_bool("Continue training a single network?",["Yes","No"])
-      else:
-         model, RL_type = load_model(env,"Which network should be loaded?", continue_training=True)
-         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
-
-         if get_bool("Continue training a single network?",["Yes","No"]):
+      if get_bool("What type of training do you want?",["NN Agent","MCTS"]):
+         env = Game_Controller(True)
+         if get_bool("Do you want to load a network as an opponent?",["Yes","No"]):
+            enemy_model, _ = load_model(env, "Which network should be loaded as an opponent?")
+            env.load_opponent_model(enemy_model)
+         else:
+            enemy_model = None
+         
+         observation = env.reset() # observation, _
+         timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
+         save_path = os.path.join('models',timestamp)
+         # set up logger
+         log_path = os.path.join('logs', 'training',timestamp)
+         new_logger = configure(log_path, ["stdout", "tensorboard"])
+         if get_bool("Add callback to training?",["yes","no"]):
+            call_index = get_index("What callback? ",
+                     ['SaveOnBestTrainingRewardCallback'])
+            if call_index == 0:
+               # Create the callback: check every x steps
+               callback = SaveOnBestTrainingRewardCallback(check_freq=get_int("How often should callback be triggered?", 0, 10000), log_dir=log_path, save_dir=save_path)
+         else:
+            callback = None
+         if get_bool("Train a new network or continue training?",["Train new","Continue training"]):
+            log_path += timestamp
+            model, RL_type = define_model(env, log_path, callback)
             timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
-            model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
+            # Set new logger
+            model.set_logger(new_logger)
+            single = True
+            while(single):
+               timestamp = time.strftime("%d%m%Y_%H%M", time.localtime())
+               model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True,reset_num_timesteps= not single)
+               mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
+               model.save(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
+               model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{round(mean_reward)}")
+               single = get_bool("Continue training a single network?",["Yes","No"])
+         else:
+            model, RL_type = load_model(env,"Which network should be loaded?", continue_training=True)
             mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
-            mean_reward = round(mean_reward)
-            model.save(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
-            model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
 
-      if get_bool("Continue with evolutionary training?",["Yes","No"]):
-         # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
-         # in their name: only these ones affect the action.
-         # NOTE: you can retrieve those parameters using model.get_parameters() too
-         mean_params = dict(
-         (key, value)
-         for key, value in model.policy.state_dict().items()
-         if ("policy" in key or "shared_net" in key or "action" in key)
-         )
+            if get_bool("Continue training a single network?",["Yes","No"]):
+               timesteps = get_int("How many timesteps should be made for the first training?", 0, 99999999)
+               model.learn(total_timesteps=timesteps,tb_log_name=timestamp,progress_bar=True)
+               mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, render=False)
+               mean_reward = round(mean_reward)
+               model.save(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
+               model.save_replay_buffer(f"{save_path}\{RL_type}Agent_{mean_reward}_{timestamp}")
 
-         ## START EVOLUTIONARY TRAINING
-         pop_size = get_int("How big should the population be?",10) # Population size
-         # Keep top 10%
-         n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
-         # Retrieve the environment
-         vec_env = model.get_env()
-         prior_mean_champion_fitness = mean_reward
-         prior_std_champion_fitness = std_reward
-         for iteration in range(get_int("How many iterations?")):
-            # Create population of candidates and evaluate them
-            population = []
-            for population_i in range(pop_size):
-                  candidate = mutate(mean_params)
-                  # Load new policy parameters to agent.
-                  # Tell function that it should only update parameters
-                  # we give it (policy parameters)
-                  model.policy.load_state_dict(candidate, strict=False)
-                  # Evaluate the candidate
-                  fitness, _ = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
-                  population.append((candidate, fitness))
-            # Take top 10% and use average over their parameters as next mean parameter
-            top_candidates = sorted(population, key=lambda x: x[1], reverse=True)[:n_elite]
+         if get_bool("Continue with evolutionary training?",["Yes","No"]):
+            # Include only variables with "policy", "action" (policy) or "shared_net" (shared layers)
+            # in their name: only these ones affect the action.
+            # NOTE: you can retrieve those parameters using model.get_parameters() too
             mean_params = dict(
-                  (
-                     name,
-                     th.stack([candidate[0][name] for candidate in top_candidates]).mean(dim=0),
-                  )
-                  for name in mean_params.keys()
+            (key, value)
+            for key, value in model.policy.state_dict().items()
+            if ("policy" in key or "shared_net" in key or "action" in key)
             )
-            mean_fitness = sum(top_candidate[1] for top_candidate in top_candidates) / n_elite
-            print(f"Iteration {iteration + 1:<3} Mean top fitness: {mean_fitness:.2f}")
-            print(f"Best fitness this iteration: {top_candidates[0][1]:.2f} vs Champion: {prior_mean_champion_fitness:.2f}")
-            if top_candidates[0][1] > prior_mean_champion_fitness:
-               print("Saving new Champion",end="")
-               prior_mean_champion_fitness = top_candidates[0][1]
-               name = RL_type+"_Agent_" + str(round(prior_mean_champion_fitness))
-               champion = top_candidates[0][0]
-               model.policy.load_state_dict(champion, strict=False)
-               model.save_replay_buffer(f"{save_path}\{name}")
-               model.save(f"{save_path}\{name}")
-               time.sleep(1)
-               print(" - saved")
 
-      # Save the policy independently from the model
-      # Note: if you don't save the complete model with `model.save()`
-      # you cannot continue training afterward
-      policy = model.policy
-      policy.save("Champion_Policy")
-      print("Finished Training")
+            ## START EVOLUTIONARY TRAINING
+            pop_size = get_int("How big should the population be?",10) # Population size
+            # Keep top 10%
+            n_elite = pop_size // 10 # Elite size (the best networks in this 10% will be kept until replaced by better ones)
+            # Retrieve the environment
+            vec_env = model.get_env()
+            prior_mean_champion_fitness = mean_reward
+            prior_std_champion_fitness = std_reward
+            for iteration in range(get_int("How many iterations?")):
+               # Create population of candidates and evaluate them
+               population = []
+               for population_i in range(pop_size):
+                     candidate = mutate(mean_params)
+                     # Load new policy parameters to agent.
+                     # Tell function that it should only update parameters
+                     # we give it (policy parameters)
+                     model.policy.load_state_dict(candidate, strict=False)
+                     # Evaluate the candidate
+                     fitness, _ = evaluate_policy(model, vec_env, n_eval_episodes=10, render=False)
+                     population.append((candidate, fitness))
+               # Take top 10% and use average over their parameters as next mean parameter
+               top_candidates = sorted(population, key=lambda x: x[1], reverse=True)[:n_elite]
+               mean_params = dict(
+                     (
+                        name,
+                        torch.stack([candidate[0][name] for candidate in top_candidates]).mean(dim=0),
+                     )
+                     for name in mean_params.keys()
+               )
+               mean_fitness = sum(top_candidate[1] for top_candidate in top_candidates) / n_elite
+               print(f"Iteration {iteration + 1:<3} Mean top fitness: {mean_fitness:.2f}")
+               print(f"Best fitness this iteration: {top_candidates[0][1]:.2f} vs Champion: {prior_mean_champion_fitness:.2f}")
+               if top_candidates[0][1] > prior_mean_champion_fitness:
+                  print("Saving new Champion",end="")
+                  prior_mean_champion_fitness = top_candidates[0][1]
+                  name = RL_type+"_Agent_" + str(round(prior_mean_champion_fitness))
+                  champion = top_candidates[0][0]
+                  model.policy.load_state_dict(champion, strict=False)
+                  model.save_replay_buffer(f"{save_path}\{name}")
+                  model.save(f"{save_path}\{name}")
+                  time.sleep(1)
+                  print(" - saved")
 
+         # Save the policy independently from the model
+         # Note: if you don't save the complete model with `model.save()`
+         # you cannot continue training afterward
+         policy = model.policy
+         policy.save("Champion_Policy")
+         print("Finished Training")
+      else: # MCTS
+         policy_net = PolicyNetwork()
+         players = [
+                  #(uses_action, is_bottom_player, ArtificialRetardation("Trained Monkey")),          # Trainee
+                  (False, True, MCTS_Idiot("Trained Monkey", policy_net)),           # Trainee
+                  (False, False, ArtificialRetardation("Clueless Robot"))    # Opponent
+               ]
+         memory = Memory()
+         env = Game_Controller(True,players=players)
+         optimizer = torch.optim.Adam(policy_net.parameters(), lr=1e-3)
+         num_episodes = 100
+         state, _ = env.reset()
+         for _ in range(num_episodes):
+            state, reward, truncated , done, info = env.step(None)
+            memory.add(state, action, reward, next_state, done)
+            states, actions, rewards, _, _ = memory.sample()  # Get a batch of data from memory
+            
+            # Train the policy network on the collected data and update its weights
+            optimizer.zero_grad()
+            action_probs = policy_net(states)
+            loss = torch.nn.functional.cross_entropy(action_probs, actions)  # Adjust the loss function as needed
+            loss.backward()
+            optimizer.step()
+      
 if __name__ == "__main__":
    main()
