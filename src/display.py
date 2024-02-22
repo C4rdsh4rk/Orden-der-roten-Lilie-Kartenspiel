@@ -15,7 +15,7 @@ from rich.console import Console
 # needed for input
 import getchlib
 
-from src.cards import Booster, Card
+from src.cards import Card
 
 
 def row_sort_order(row_card_tuple: tuple):

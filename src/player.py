@@ -6,7 +6,7 @@ import torch
 from src.row import Row
 from src.utils import get_name
 from src.cards import Card
-from src.MCTS import PolicyNetwork
+from src.MCTS import PolicyNetwork, MCTS
 
 any_row_choice = {
     1: Row.FRONT,
@@ -104,7 +104,7 @@ class MCTS_Idiot(Player):
     def make_choice(self, valid_actions, env, action=None):
         is_bottom_player = [player for player in env.players if player[2]==self][0][1]
         state = env.get_state(is_bottom_player)
-        mcts = MCTS(state, self.policy_net)
+        mcts = MCTS(state, self.policy_net, env)
         # Run simulations and update the tree until search depth is reached or game ends
         for _ in range(self.search_depth):
             mcts.simulate()

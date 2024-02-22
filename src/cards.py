@@ -14,6 +14,7 @@ class CardName(Enum):
     BURN = 6
     SUMMON = 7
     REVIVE = 8
+    RETREAT = 9
 
 class Card:  
     def __init__(self, name: CardName, strength: int, row_restriction=Row | None):
@@ -86,7 +87,7 @@ class Summon(EffectCard):
 
 class Revive(EffectCard):
     def __init__(self, name):
-        super().__init__(name, 1, Row.WISE)
+        super().__init__(name, 1, Row.SUPPORT)
         self.name = name
     
     def execute_effect(self, env, bottom_player) -> None:
@@ -98,45 +99,42 @@ class Revive(EffectCard):
         card_row = env.get_hand(bottom_player)[-1].type
         env.play_card(bottom_player, card_index, card_row)
 
-class Booster:
-    def __init__(self):
-        self.available_strength = [1,2,3,4,5]
-        self.available_cards_weights = [0.3, 0.3, 0.3, 0.05, 0.05] # Probabilities
-        self.strength_weights = [0.35, 0.25, 0.2, 0.15, 0.05] # Probabilities
-        self.available_effects = [
-            #DrawCard("DRAW2", 2),
-            #Burn("BURN")
-        ]
-        self.available_cards = [
-                            Card("KNIGHT", random.choices(self.available_strength, self.strength_weights)[0], Row.FRONT),
-                            Card("CLERIC", random.choices(self.available_strength, self.strength_weights)[0], Row.WISE),
-                            Card("HEALER", random.choices(self.available_strength, self.strength_weights)[0], Row.SUPPORT),
-                            Card("HERO", random.choices(self.available_strength, self.strength_weights)[0], Row.ANY), # Can be played in any row
-                            random.choice(self.available_effects)
-                            ]
-
-    def open(self,size):
-        return random.choices(self.available_cards, self.available_cards_weights, k=size)
+class Retreat(EffectCard):
+    def __init__(self, name):
+        super().__init__(name, 1, Row.FRONT)
+        self.name = name
     
+    def execute_effect(self, env, bottom_player) -> None:
+        half_board = env.get_half_board(bottom_player)
+        targets = [
+            (str(card), row, i) for row in half_board.keys() for i, card in enumerate(half_board[row])
+        ]
+        if len(targets)>0:
+            target_index = get_index("Which card do you want to take back?", [card_info[0] for card_info in targets], "Retreat Effect")
+            _, row, card_row_index = targets[target_index]
+            env.draw_card_from_board(bottom_player, card_row_index, row)
+
 class Starter:
     def __init__(self):
         self.available_effects = [
             #Burn("BURN"),
             Revive("REVIVE"),
-            Summon("SUMMON")
+            Summon("SUMMON"),
+            Retreat("RETREAT")
         ]
         self.defined_deck = []
 
-        strenghts = [1,2,2,3,4]
-        #strenghts = [2, 3, 4]
+        #strenghts = [1,2,2,3,4]
+        strenghts = [2, 3, 4]
         self.defined_deck.append(Revive("REVIVE"))
         self.defined_deck.append(Summon("SUMMON"))
         for strength  in strenghts:
             self.defined_deck.append(Card("KNIGHT", strength, Row.FRONT))
             self.defined_deck.append(Card("CLERIC", strength, Row.WISE))
             self.defined_deck.append(Card("HEALER", strength, Row.SUPPORT))
+        #self.defined_deck.append(random.choice(self.available_effects))
         self.defined_deck.append(random.choice(self.available_effects))
-        self.defined_deck.append(random.choice(self.available_effects))
+        self.defined_deck.append(Retreat("RETREAT"))
         self.defined_deck.append(Card("HERO", 5, Row.ANY))
 
 

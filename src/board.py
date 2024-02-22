@@ -3,7 +3,7 @@ import random
 from itertools import chain
 # local imports
 from src.row import Row
-from src.cards import Card, EffectCard, Booster, Starter
+from src.cards import Card, EffectCard, Starter
 
 
 class Board:
@@ -264,6 +264,17 @@ class Board:
         self.set_hand(bottom_player, self.get_hand(bottom_player) + self.get_graveyard(bottom_player)[:actually_drawn])
         # Remove drawn cards from the deck
         self.set_graveyard(bottom_player, self.get_graveyard(bottom_player)[actually_drawn:])
+        
+    def draw_card_from_board(self, bottom_player: bool, card_row_index: int, row: Row) -> None:
+        """Allows a player to draw a specified card back to their hand from the board.
+        Args:
+            bottom_player: The player who will draw cards.
+            row
+            card_row_index
+        """
+        self.set_hand(bottom_player, self.get_hand(bottom_player).append(self.get_half_board(bottom_player)[row][card_row_index]))
+        # Remove drawn cards from the board
+        self.remove_card_from_board(bottom_player, card_row_index, row)
 
     def play_card(self, bottom_player, card_index, row) -> None:
         """

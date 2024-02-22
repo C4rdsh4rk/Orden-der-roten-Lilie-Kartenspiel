@@ -69,7 +69,7 @@ class MCTS(object):
         
 class Node:
     def __init__(self, state, env, policy_net, parent=None, action=None):
-        self.state = state
+        self.state = torch.from_numpy(state.astype(np.float64))
         self.parent = parent
         self.action = action
         self.children = []
@@ -78,7 +78,7 @@ class Node:
         self.env = env
         self.terminal = self.env.done # Check if it is a terminal state or not
         if not self.terminal:
-            action_probs, _states = policy_net(torch.tensor([state]))
+            action_probs, _states = policy_net(self.state)
             self._expand(action_probs)
             
     def _expand(self, action_probs):
